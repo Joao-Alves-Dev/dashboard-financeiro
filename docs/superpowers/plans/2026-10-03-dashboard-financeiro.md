@@ -1,6 +1,6 @@
 # Dashboard Financeiro — Implementation Plan
 
-> Será salvo como `docs/superpowers/plans/2026-10-03-dashboard-financeiro.md`.
+> Revisão 2 (2026-10-03): Tasks 12-16 adicionadas (edições, metas, PWA, orientador, publicação pessoal); demo e E2E renumeradas para 17-18.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -14,13 +14,13 @@
 
 ## Pré-requisitos manuais (feitos pelo usuário)
 
-1. Criar nova organização no Supabase e um projeto nela (região São Paulo); habilitar **Anonymous sign-ins** em Auth > Providers.
+1. Criar nova organização no Supabase com dois projetos (região São Paulo): `financeiro-pessoal` (Auth: desabilitar novos cadastros após criar sua conta — Task 16) e `financeiro-portfolio` (habilitar **Anonymous sign-ins** — Task 17). Desenvolvimento usa `financeiro-pessoal`.
 2. Criar repositório público no GitHub `dashboard-financeiro`.
 3. Preencher `.env.local` (nunca commitado): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`.
 
 Pasta do projeto: `D:\Portfolio\dashboard-financeiro` (mover a sessão para lá com `change_directory` antes da Task 1).
 
-**Execução escolhida:** Native (superpowers:executing-plans) + revisão final independente. Primeiro passo após aprovação: mover sessão, salvar spec e plano em `docs/superpowers/`, aguardar pré-requisitos manuais (Supabase/GitHub) e iniciar Task 1.
+**Execução:** Native (superpowers:executing-plans). Tasks 1-2 concluídas (commits da01f89, df04c1f).
 
 ## Global Constraints
 
@@ -201,19 +201,110 @@ aplicarRegras<T extends { descricao: string }>(linhas: T[], regras: Regra[]): (T
 - [ ] **Step 1:** Grade categorias de despesa × 6 meses, edição inline, realizado ao lado.
 - [ ] **Step 2: Verificar:** editar, apagar, copiar mês anterior; dashboard reflete. **Step 3:** commit `feat: orçamento`.
 
-### Task 12: Demo isolada
+### Task 12: Edições (pessoal / portfólio)
 
-**Files:** Create `supabase/migrations/0006_demo.sql`; `src/features/demo/{actions.ts,banner-demo.tsx}`; `src/app/api/demo/limpar/route.ts`; `vercel.json` (cron `0 6 * * *`); `src/app/page.tsx` (landing).
+**Files:** Create `src/lib/edicao.ts`, `src/lib/edicao.test.ts`; Modify `src/app/page.tsx`, `src/app/login/page.tsx`, `.env.example` (`NEXT_PUBLIC_EDICAO=pessoal`).
 
-**Interfaces — Produces:** SQL `semear_demo() returns uuid` — para `auth.uid()` cria "Família Silva" (pessoal) e "Padaria Bom Pão" (empresa), 2 contas cada, 12 meses retroativos de lançamentos determinísticos (salário/vendas, contas fixas, variáveis), orçamentos do mês atual, 4 regras de categoria e, na Padaria, 6 pendentes nos próximos 30 dias; retorna id do workspace pessoal. Action `entrarComoDemo(): Promise<never>` (redirect).
+**Interfaces — Produces:** `type Edicao = 'pessoal' | 'portfolio'`; `obterEdicao(valor?: string): Edicao` (padrão `'pessoal'` quando ausente/inválido); `recursos(e: Edicao): { demo: boolean; cadastroAberto: boolean }`.
+
+- [ ] **Step 1: Testes que falham:** `obterEdicao(undefined)` → `'pessoal'`; `obterEdicao('xyz')` → `'pessoal'`; `recursos('pessoal')` → `{ demo: false, cadastroAberto: false }`; `recursos('portfolio')` → `{ demo: true, cadastroAberto: true }`.
+- [ ] **Step 2:** FAIL → implementar → PASS.
+- [ ] **Step 3:** Na edição pessoal, `/` redireciona para `/login` (ou último workspace se autenticado) e o link "Criar conta" some do login; a Server Action de cadastro retorna `{ ok: false, erro: 'Cadastro desabilitado' }` quando `!cadastroAberto`.
+- [ ] **Step 4:** lint/typecheck/test verdes. **Step 5:** commit `feat: edições pessoal e portfólio`.
+
+### Task 13: Metas de poupança
+
+**Files:** Create `supabase/migrations/0006_metas.sql`; `src/features/metas/{calcular-meta.ts,calcular-meta.test.ts,queries.ts,actions.ts,card-meta.tsx,form-aporte.tsx}`; `src/app/w/[id]/metas/page.tsx`; Modify `src/app/w/[id]/page.tsx` (card resumo); `tests/integracao/rls.test.ts` (incluir `metas`, `aportes_meta`).
+
+**Interfaces — Produces:**
+```ts
+type SituacaoMeta = 'no_ritmo' | 'atrasada' | 'concluida' | 'vencida'
+calcularMeta(i: { alvo: number; guardado: number; dataAlvo: string; hoje: string; sobraMedia: number }):
+  { faltam: number; mesesRestantes: number; necessarioPorMes: number; sobraMedia: number; situacao: SituacaoMeta }
+listarMetas(ws: string): Promise<(Meta & { guardado: number; calculo: ReturnType<typeof calcularMeta> })[]>
+sobraMedia3Meses(ws: string, hoje: string): Promise<number>   // média de resultado dos 3 meses fechados via resumo_mensal
+```
+Actions: `criarMeta`, `editarMeta`, `excluirMeta`, `registrarAporte(ws, metaId, data, valor: string)` (valor negativo = retirada).
+
+- [ ] **Step 1: Testes que falham (`calcular-meta.test.ts`):**
+  - alvo 1.000.000, guardado 280.000, hoje `2026-10-15`, dataAlvo `2027-09-30` → `mesesRestantes 12`, `faltam 720000`, `necessarioPorMes 60000`.
+  - mesma meta com `sobraMedia 45000` → `'atrasada'`; com `60000` → `'no_ritmo'`.
+  - guardado ≥ alvo → `'concluida'`, `necessarioPorMes 0`.
+  - dataAlvo no passado e guardado < alvo → `'vencida'`, `mesesRestantes 1`.
+  - dataAlvo no mês atual → `mesesRestantes 1`. `necessarioPorMes` arredonda para cima ao centavo.
+- [ ] **Step 2:** FAIL → implementar (aritmética de meses sobre `YYYY-MM`, sem `Date`) → PASS.
+- [ ] **Step 3:** Migração (tabelas do spec, RLS `is_member`, FK `meta_id on delete cascade`); estender `rls.test.ts`; `supabase db push`; `npm run test:integracao` → PASS.
+- [ ] **Step 4:** Tela de metas (cards com barra de progresso, "R$ X/mês necessários · sua sobra média R$ Y", situação colorida) e card resumo no dashboard. Verificar no navegador.
+- [ ] **Step 5:** commit `feat: metas de poupança`.
+
+### Task 14: PWA e lançamento rápido
+
+**Files:** Create `src/app/manifest.ts`, `public/icons/{icon-192.png,icon-512.png,maskable-512.png}`, `src/components/barra-inferior.tsx`, `src/features/lancamentos/{lancamento-rapido.tsx,categorias-frequentes.ts}`; Modify `src/app/w/[id]/layout.tsx`, `src/features/lancamentos/actions.ts`.
+
+**Interfaces — Consumes:** `criarLancamento` (Task 8). **Produces:** `categoriasFrequentes(ws: string, hoje: string, limite = 6): Promise<Categoria[]>` (por contagem de lançamentos de saída nos últimos 60 dias, empate por nome); cookie `ultima_conta_<ws>` gravado por `criarLancamento`.
+
+- [ ] **Step 1:** `manifest.ts`: `name 'Dashboard Financeiro'`, `short_name 'Finanças'`, `display 'standalone'`, `start_url '/'`, ícones acima. Ícones gerados (SVG simples → PNG).
+- [ ] **Step 2:** Barra inferior visível só `< 768px` (Início, Lançamentos, +, Metas, Orientações); `+` abre sheet do lançamento rápido (shadcn `Sheet`, lado `bottom`).
+- [ ] **Step 3:** Lançamento rápido: valor com `inputMode="decimal"` e foco automático, "saída" pré-selecionado, chips de `categoriasFrequentes` + "mais…", conta pré-selecionada pelo cookie, data hoje editável, descrição opcional; ao salvar, fecha e mostra toast.
+- [ ] **Step 4: Verificar** com `resize_window` preset mobile: lançar um gasto em ≤ 3 toques após abrir o sheet; Lighthouse/Chrome reconhece o app como instalável (manifest válido). lint/typecheck/test verdes.
+- [ ] **Step 5:** commit `feat: PWA e lançamento rápido`.
+
+### Task 15: Orientador por regras e biblioteca "Aprenda"
+
+**Files:** Create `supabase/migrations/0007_orientador.sql`; `src/features/orientador/{tipos.ts,contexto.ts,motor.ts,motor.test.ts,regras/*.ts,regras/*.test.ts,conteudo/*.md,biblioteca.ts,biblioteca.test.ts,actions.ts,lista-alertas.tsx,card-alertas.tsx}`; páginas `src/app/w/[id]/orientacoes/page.tsx`, `src/app/w/[id]/orientacoes/[slug]/page.tsx`; Modify `src/app/w/[id]/page.tsx`, config (limites). Dev dep: `gray-matter`.
+
+**Interfaces — Consumes:** `resumo_mensal`, `gastos_por_categoria`, `orcamento_vs_realizado` (Task 10), `listarMetas`/`calcularMeta` (Task 13). **Produces:**
+```ts
+type Severidade = 'critico' | 'atencao' | 'info' | 'positivo'
+type Alerta = { regraId: string; chave: string; severidade: Severidade; titulo: string; texto: string; dicaId: string }
+type ConfigOrientador = { limiteCategoriaPct: number; altaPct: number; cartaoPct: number }   // padrões 15, 30, 30
+type ContextoFinanceiro = {
+  hoje: string; diaDoMes: number; diasNoMes: number; rendaMes: number; saidasMes: number;
+  categorias: { id: string; nome: string; gastoMes: number; mediaTresMeses: number }[];
+  orcamentos: { categoriaId: string; nome: string; orcado: number; realizado: number }[];
+  metas: { id: string; nome: string; situacao: SituacaoMeta; necessarioPorMes: number; sobraMedia: number }[];
+  gastoCartaoMes: number; resultadosTresMeses: number[];
+}
+type Regra = (ctx: ContextoFinanceiro, cfg: ConfigOrientador) => Alerta[]
+avaliar(ctx, cfg, dispensados: { regraId: string; chave: string; severidade: Severidade }[]): Alerta[]  // ordenado por severidade
+montarContexto(ws: string, hoje: string): Promise<ContextoFinanceiro>
+carregarBiblioteca(): Dica[]   // Dica = { id; titulo; tema: 'orcamento'|'guardar'|'dividas'|'investir'; resumo; corpo }
+```
+Valores monetários nos textos via `formatarBRL`. `chave` identifica a instância (ex.: id da categoria) para dispensar.
+
+- [ ] **Step 1: Testes que falham (um arquivo por regra, ids e limiares do spec):**
+  - `categoria-pct-renda`: renda 500.000, Alimentação 110.000, limite 15 → 1 alerta `atencao` com "22%" no texto; renda 0 → `[]`.
+  - `orcamento-80`/`orcamento-100`: realizado 85% → `atencao`; 100% → `critico` (só o de 100%, não ambos).
+  - `mes-negativo`: dia 10 de 30, saídas 200.000, renda 500.000 → projeção 600.000 → `critico`; projeção ≤ renda → `[]`.
+  - `categoria-alta`: média 10.000, mês 14.100, altaPct 30 → alerta; média 0 → `[]`.
+  - `meta-atrasada`, `sem-reserva` (meta "Reserva de emergência" existente → `[]`; "RESERVA" também casa), `sobra-consistente` (`[100, 50, 1]` → positivo; `[100, -1, 50]` → `[]`), `cartao-alto`.
+  - `avaliar`: ordena critico > atencao > info > positivo; alerta dispensado com mesma severidade é filtrado, com severidade maior reaparece.
+  - `biblioteca.test.ts`: todos os 13 ids do spec existem; todo `dicaId` usado pelas regras existe; frontmatter válido (tema ∈ conjunto).
+- [ ] **Step 2:** FAIL → implementar regras e motor → PASS.
+- [ ] **Step 3:** Escrever os 13 textos em `conteudo/` (150-400 palavras cada, PT-BR, práticos, sem taxas atuais; citar onde consultar dados vigentes, ex.: Tesouro Direto e Banco Central). Rodapé fixo "Conteúdo educativo; não é recomendação de investimento."
+- [ ] **Step 4:** Migração (`config_orientador`, `alertas_dispensados`, RLS) + `montarContexto` + action `dispensarAlerta`; telas `/orientacoes`, `/orientacoes/[slug]`, card no dashboard (3 primeiros), limites em config. `npm run test:integracao` (RLS das novas tabelas) → PASS.
+- [ ] **Step 5: Verificar** no navegador com dados que disparem ao menos 3 regras. Commit `feat: orientador financeiro por regras`.
+
+### Task 16: Publicação pessoal
+
+- [ ] **Step 1:** Projeto Vercel `financeiro-pessoal` ligado ao repositório, env `NEXT_PUBLIC_EDICAO=pessoal` + chaves do Supabase `financeiro-pessoal` (preenchidas pelo usuário no painel).
+- [ ] **Step 2:** Usuário cria sua conta na URL publicada; depois desabilita "Allow new users to sign up" no Supabase Auth do `financeiro-pessoal`.
+- [ ] **Step 3: Verificar:** tentativa de cadastro com outro e-mail falha; login funciona no celular; app instala na tela inicial; lançamento rápido grava.
+- [ ] **Step 4:** A URL pessoal não é publicada no README (fica só com o usuário). Commit se houver alterações.
+
+### Task 17: Demo isolada (edição portfólio)
+
+**Files:** Create `supabase/migrations/0008_demo.sql`; `src/features/demo/{actions.ts,banner-demo.tsx}`; `src/app/api/demo/limpar/route.ts`; `vercel.json` (cron `0 6 * * *`); `src/app/page.tsx` (landing).
+
+**Interfaces — Produces:** SQL `semear_demo() returns uuid` — para `auth.uid()` cria "Família Silva" (pessoal) e "Padaria Bom Pão" (empresa), 2 contas cada, 12 meses retroativos de lançamentos determinísticos (salário/vendas, contas fixas, variáveis), orçamentos do mês atual, 4 regras de categoria, 2 metas com aportes (uma "Reserva de emergência" atrasada) e, na Padaria, 6 pendentes nos próximos 30 dias; retorna id do workspace pessoal. Action `entrarComoDemo(): Promise<never>` (redirect).
 
 - [ ] **Step 1:** Migração `semear_demo` (`security definer`; recusa se `auth.jwt()->>'is_anonymous'` não for `'true'` ou se o usuário já tiver workspace).
-- [ ] **Step 2:** `entrarComoDemo`: `signInAnonymously()` → `rpc('semear_demo')` → redirect `/w/[id]`. Banner "Você está na demo — os dados somem em 24h" para usuário anônimo.
+- [ ] **Step 2:** Botão e action só existem quando `recursos(obterEdicao()).demo` (Task 12); na edição pessoal a action retorna erro. `entrarComoDemo`: `signInAnonymously()` → `rpc('semear_demo')` → redirect `/w/[id]`. Banner "Você está na demo — os dados somem em 24h" para usuário anônimo.
 - [ ] **Step 3:** Rota de limpeza: exige `Authorization: Bearer ${CRON_SECRET}` (senão 401); via `auth.admin.listUsers` apaga anônimos com `created_at` há mais de 24h (`auth.admin.deleteUser`); retorna `{ removidos: n }`.
 - [ ] **Step 4: Verificar:** duas janelas anônimas entram na demo e não veem dados uma da outra; `curl` sem segredo → 401; com segredo → 200.
 - [ ] **Step 5:** commit `feat: demo isolada`.
 
-### Task 13: E2E, README e publicação final
+### Task 18: E2E, README e publicação do portfólio
 
 **Files:** Create `playwright.config.ts`, `e2e/demo.spec.ts`, `e2e/importacao.spec.ts`, `README.md`, `docs/demo.gif`.
 

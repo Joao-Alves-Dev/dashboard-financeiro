@@ -1,6 +1,6 @@
 # Dashboard Financeiro — Spec de Design (v1)
 
-> Será salvo no projeto como `docs/superpowers/specs/2026-10-03-dashboard-financeiro-design.md` ao sair do modo de planejamento.
+> Revisão 2 (2026-10-03): adicionadas duas edições (pessoal/portfólio), metas de poupança, PWA com lançamento rápido e orientador financeiro por regras. Ver seções "Edições" em diante. IA generativa descartada por custo; pode ser plugada depois.
 
 ## Contexto
 
@@ -12,7 +12,9 @@ Restrições: 5-8h/semana, ~3 semanas para a v1. Supabase em **nova organizaçã
 
 ## Escopo por fase
 
-- **v1 (este spec):** workspaces Pessoal/Empresa, contas, categorias, lançamentos (CRUD), importação CSV/OFX com prévia/dedupe/desfazer, regras de categorização, orçamento vs realizado, dashboard, demo isolada.
+- **v1 (este spec):** workspaces Pessoal/Empresa, contas, categorias, lançamentos (CRUD), importação CSV/OFX com prévia/dedupe/desfazer, regras de categorização, orçamento vs realizado, dashboard, demo isolada, **metas de poupança, PWA com lançamento rápido, orientador por regras + biblioteca "Aprenda"**.
+- **Ordem de entrega:** núcleo comum → recursos pessoais (metas, PWA, orientador) → publicação pessoal → demo e material de portfólio.
+- **Futuro opcional:** assistente com IA generativa (Claude API, Sonnet 5.5), ativado só se houver `ANTHROPIC_API_KEY`; reutiliza o contexto do orientador.
 - **v2 (fora):** projeção de caixa, lançamentos recorrentes.
 - **v3 (fora):** multiusuário com papéis e convites (esquema já preparado via `workspace_members`).
 - **Fora de tudo:** Open Finance/integração bancária, multi-moeda.
@@ -64,6 +66,63 @@ Stack: Tailwind, shadcn/ui, Recharts, Zod, `@supabase/ssr`, `next-intl`, Papapar
 
 **Demo isolada:** botão → `signInAnonymously` → `semear_demo()` cria para o usuário "Família Silva" (pessoal) e "Padaria Bom Pão" (empresa) com 12 meses de dados fictícios → redireciona ao dashboard. Vercel Cron diário em `/api/demo/limpar` (protegido por `CRON_SECRET`) apaga usuários anônimos com mais de 24h (cascade nos dados).
 
+## Edições (pessoal / portfólio)
+
+Mesmo código, dois deploys. Variável `NEXT_PUBLIC_EDICAO` (`pessoal` | `portfolio`) lida em `src/lib/edicao.ts`:
+
+| Recurso | pessoal | portfolio |
+|---|---|---|
+| Demo anônima (landing com botão demo) | não | sim |
+| Cadastro de novas contas | fechado (desabilitado no Supabase Auth; UI esconde) | aberto |
+| Metas, PWA, orientador | sim | sim |
+
+Infra: dois projetos Supabase na nova organização (`financeiro-pessoal`, `financeiro-portfolio`) com as mesmas migrações; dois projetos Vercel apontando para o mesmo repositório. Na edição pessoal, `/` redireciona para `/login` ou para o último workspace.
+
+## Metas de poupança
+
+Tabelas:
+
+| Tabela | Campos |
+|---|---|
+| `metas` | id, workspace_id, nome, valor_alvo_centavos, data_alvo (date), criado_em, concluida_em (nullable) |
+| `aportes_meta` | id, workspace_id, meta_id, data, valor_centavos, observacao |
+
+- Aporte é dinheiro separado para a meta; **não** é lançamento (não altera resultado do mês). Retirada = aporte negativo.
+- RLS igual às demais tabelas (`is_member(workspace_id)`).
+- Função pura `calcularMeta({ alvo, guardado, dataAlvo, hoje, sobraMedia })` → `{ faltam, mesesRestantes, necessarioPorMes, sobraMedia, situacao: 'no_ritmo' | 'atrasada' | 'concluida' | 'vencida' }`. `mesesRestantes` conta o mês atual; mínimo 1. `sobraMedia` = média do `resultado` dos 3 últimos meses fechados (`resumo_mensal`).
+- Tela `/w/[id]/metas`: cards com progresso, necessário/mês vs sobra média, registrar aporte. Card resumido no dashboard.
+
+## PWA e uso no celular
+
+- `src/app/manifest.ts` + ícones (192/512, maskable); instalável; sem modo offline.
+- Layout mobile-first; em telas < 768px, barra inferior: Início, Lançamentos, **+**, Metas, Orientações. Desktop mantém navegação lateral/superior.
+- Botão **+** abre o **lançamento rápido** (sheet): valor com `inputMode="decimal"`, tipo "saída" por padrão, chips das 6 categorias mais usadas nos últimos 60 dias (depois "mais…"), conta = última usada (cookie), data = hoje (editável), descrição opcional. Salvar com 1 toque.
+
+## Orientador financeiro por regras
+
+Sem IA, custo zero. Dois componentes:
+
+**Motor de regras** (`src/features/orientador/regras/`): cada regra é função pura `(ctx: ContextoFinanceiro, cfg: ConfigOrientador) => Alerta | null`. `ContextoFinanceiro` contém: renda e saídas do mês atual, gastos por categoria (mês atual e média dos 3 anteriores), orçamento vs realizado, dia do mês e dias no mês, metas com `calcularMeta`, total da conta tipo `cartao` no mês, sobras dos últimos 3 meses.
+
+| id | Dispara quando | Severidade | Dica ligada |
+|---|---|---|---|
+| `categoria-pct-renda` | gasto da categoria > `cfg.limiteCategoriaPct` (padrão 15) % da renda do mês | atencao | orcamento-50-30-20 |
+| `orcamento-80` / `orcamento-100` | realizado ≥ 80% / ≥ 100% do orçado | atencao / critico | orcamento-realista |
+| `mes-negativo` | projeção (saídas/dia decorrido × dias do mês) > renda do mês | critico | cortar-gastos |
+| `categoria-alta` | categoria > média 3 meses × (1 + `cfg.altaPct`/100) (padrão 30) e média > 0 | atencao | revisar-habitos |
+| `meta-atrasada` | situação `atrasada` | atencao | metas-ritmo |
+| `sem-reserva` | nenhuma meta cujo nome contém "reserva" (case-insensitive) | info | reserva-emergencia |
+| `sobra-consistente` | 3 últimos meses com resultado > 0 | positivo | onde-guardar |
+| `cartao-alto` | saídas em contas `cartao` > `cfg.cartaoPct` (padrão 30) % da renda | atencao | juros-cartao |
+
+Sem renda no mês, regras baseadas em % da renda não disparam. Alertas ordenados por severidade (critico > atencao > info > positivo). Dispensar um alerta grava `(regra_id, chave, mes)` em `alertas_dispensados`; ele volta se a severidade subir ou no mês seguinte.
+
+Tabelas: `config_orientador` (workspace_id PK, limite_categoria_pct, alta_pct, cartao_pct) e `alertas_dispensados` (workspace_id, regra_id, chave, mes, severidade).
+
+**Biblioteca "Aprenda"** (`src/features/orientador/conteudo/*.md` com frontmatter `id, titulo, tema, resumo`): temas Orçamento, Guardar, Dívidas, Investir (básico). Conteúdo educativo, em PT-BR, sem taxas ou rendimentos que envelhecem (indicar onde consultar). Aviso fixo: "Conteúdo educativo; não é recomendação de investimento." Conjunto inicial (ids): `orcamento-50-30-20`, `orcamento-realista`, `cortar-gastos`, `revisar-habitos`, `reserva-emergencia`, `onde-guardar`, `metas-ritmo`, `juros-cartao`, `quitar-dividas`, `juros-compostos`, `renda-fixa-basico`, `fgc`, `renda-variavel-risco`.
+
+Telas: `/w/[id]/orientacoes` (alertas ativos + biblioteca com busca por título/resumo), `/w/[id]/orientacoes/[slug]` (texto), card no dashboard com os 3 alertas principais, limites editáveis em `/w/[id]/config`.
+
 ## Organização do código
 
 ```
@@ -89,7 +148,7 @@ Parsers, money, id-externo e regras são funções puras sem dependência de Sup
 
 ## Testes
 
-- Vitest (TDD): parse-ofx (fixtures anonimizadas estilo Itaú, Nubank, Inter), parse-csv (`;`, `1.234,56`, `dd/mm/aaaa`), money, id-externo, aplicar-regras.
+- Vitest (TDD): parse-ofx (fixtures anonimizadas estilo Itaú, Nubank, Inter), parse-csv (`;`, `1.234,56`, `dd/mm/aaaa`), money, id-externo, aplicar-regras, calcularMeta, cada regra do orientador, carregamento/validação do frontmatter da biblioteca (toda `dica` referenciada por regra existe).
 - Teste de isolamento RLS: script com dois usuários; B não lê nem grava dados do workspace de A.
 - Playwright: (1) demo → dashboard → troca para Empresa; (2) importar OFX → prévia → confirmar → dashboard → desfazer.
 - GitHub Actions: lint, typecheck, Vitest em todo push.
@@ -104,6 +163,9 @@ Repositório público no GitHub; README como estudo de caso (problema, decisões
 |---|---|
 | 1 | Setup, esquema + RLS + teste de isolamento, auth, workspace, CRUD de lançamentos/contas, primeiro deploy |
 | 2 | Parsers OFX/CSV (TDD), fluxo de importação com prévia/desfazer, regras |
-| 3 | Funções SQL + gráficos, orçamento, demo (seed + limpeza), Playwright, README/GIF |
+| 3 | Funções SQL + gráficos, orçamento |
+| 4 | Edições, metas, PWA + lançamento rápido |
+| 5 | Orientador (regras + biblioteca), publicação pessoal |
+| 6 | Demo (seed + limpeza), Playwright, README/GIF, publicação portfólio |
 
-Corte em caso de atraso (nesta ordem): categorização em lote, "copiar mês anterior". Núcleo intocável: importação, dashboard, demo.
+Corte em caso de atraso (nesta ordem): categorização em lote, "copiar mês anterior". Núcleo intocável: importação, dashboard, metas, orientador.
