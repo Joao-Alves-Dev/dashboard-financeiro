@@ -1,6 +1,8 @@
 # Dashboard Financeiro — Spec de Design (v1)
 
 > Revisão 2 (2026-10-03): adicionadas duas edições (pessoal/portfólio), metas de poupança, PWA com lançamento rápido e orientador financeiro por regras. Ver seções "Edições" em diante. IA generativa descartada por custo; pode ser plugada depois.
+>
+> Revisão 3 (2026-10-05): Supabase substituído por **Neon (Postgres) + Better Auth + Drizzle**. O plano grátis do Supabase limita 2 projetos ativos somando todas as organizações do usuário, e as duas vagas já estão em uso.
 
 ## Contexto
 
@@ -8,7 +10,7 @@ Projeto 3 de 4 do portfólio definido na sessão "Segunda fonte de renda" (objet
 
 Critério de sucesso: app publicado, demo acessível em um clique, README em formato de estudo de caso, sem cara de tutorial — diferenciais reais (importação de extrato, orçamento vs realizado, modo Pessoal/Empresa).
 
-Restrições: 5-8h/semana, ~3 semanas para a v1. Supabase em **nova organização** (a atual está no limite de 2 projetos). Deploy na Vercel.
+Restrições: 5-8h/semana. Custo zero: Neon (plano grátis: 100 projetos, 0,5 GB e 100 CU-h/mês por projeto), Vercel Hobby, GitHub. Deploy na Vercel.
 
 ## Escopo por fase
 
@@ -23,16 +25,18 @@ Idioma: PT-BR, BRL; textos centralizados em `messages/pt-BR.json` (next-intl) pa
 
 ## Arquitetura
 
-Next.js (App Router, TypeScript) + Server Actions + Supabase (Postgres, Auth, RLS). Autorização no banco via RLS; agregações em funções SQL; parsing de importação no servidor.
+Next.js (App Router, TypeScript) + Server Actions + Neon Postgres + Better Auth. Autorização no banco via RLS; agregações em funções SQL; parsing de importação no servidor. Todo acesso ao banco acontece no servidor; o navegador nunca fala com o Postgres.
 
-Stack: Tailwind, shadcn/ui, Recharts, Zod, `@supabase/ssr`, `next-intl`, Papaparse; parser OFX próprio. Migrações em `supabase/migrations/` aplicadas com Supabase CLI (`supabase db push`) no projeto remoto (sem Docker).
+Stack: Tailwind, shadcn/ui, Recharts, Zod, `next-intl`, Papaparse; parser OFX próprio. Banco: `@neondatabase/serverless` em modo **Pool (WebSocket)**, obrigatório para transações interativas, + Drizzle ORM (`drizzle-orm/neon-serverless`). Auth: Better Auth com adaptador Drizzle (`provider: "pg"`), e-mail/senha, sessão em cookie; plugin anônimo para a demo. Migrações em `db/migrations/` geradas e aplicadas com `drizzle-kit` (tabelas a partir do schema TS; RLS, funções e políticas em migrações SQL customizadas).
+
+Ambientes Neon: cada projeto tem branch `main` (produção) e branch `dev` (desenvolvimento local e testes de integração).
 
 ## Modelo de dados
 
 | Tabela | Campos principais |
 |---|---|
 | `workspaces` | id, nome, tipo (`pessoal`/`empresa`), criado_por, criado_em |
-| `workspace_members` | workspace_id, user_id, papel (`dono` na v1) — PK composta |
+| `workspace_members` | workspace_id, user_id (text, FK `user.id` do Better Auth), papel (`dono` na v1) — PK composta |
 | `contas` | id, workspace_id, nome, tipo (`corrente`/`cartao`/`dinheiro`), saldo_inicial_centavos, mapeamento_csv (jsonb, opcional) |
 | `categorias` | id, workspace_id, nome, natureza (`receita`/`despesa`), cor |
 | `lancamentos` | id, workspace_id, conta_id, categoria_id (nullable), data, descricao, valor_centavos (bigint, + entrada / − saída), status (`efetivado`/`pendente`), id_externo, importacao_id (nullable) |
@@ -45,12 +49,19 @@ Stack: Tailwind, shadcn/ui, Recharts, Zod, `@supabase/ssr`, `next-intl`, Papapar
 - Lançamentos manuais têm `id_externo` nulo (Postgres permite múltiplos nulos no unique).
 - Saldo atual de uma conta = `saldo_inicial_centavos` + soma dos lançamentos `efetivado`.
 - Modo Empresa: `pendente` com data futura = conta a pagar/receber.
-- FKs para `auth.users` e para `workspaces` com `on delete cascade` (a limpeza da demo depende disso).
+- Tabelas do Better Auth (`user`, `session`, `account`, `verification`) ficam no mesmo banco, geradas pelo CLI do Better Auth; ids de usuário são `text`. `workspaces.criado_por` e `workspace_members.user_id` referenciam `user.id`.
+- FKs para `user` e para `workspaces` com `on delete cascade` (a limpeza da demo depende disso).
 - Categorias padrão criadas por função ao criar workspace (conjuntos diferentes para pessoal e empresa).
 
-**RLS:** função `is_member(ws uuid)` (security definer, `stable`); todas as tabelas com policies `select/insert/update/delete using is_member(workspace_id)`. `service_role` só no endpoint de limpeza da demo.
+**RLS (sem Supabase):**
+- O servidor identifica o usuário pela sessão do Better Auth e executa cada operação de domínio dentro de `comUsuario(userId, fn)`: abre uma transação, executa `select set_config('app.usuario_id', $1, true)` (válido só naquela transação) e chama `fn(tx)`.
+- Função SQL `usuario_atual()` = `nullif(current_setting('app.usuario_id', true), '')`.
+- `is_member(ws uuid)` (security definer, `stable`) verifica `workspace_members` com `usuario_atual()`.
+- Todas as tabelas de domínio: `enable row level security` **e** `force row level security` (a role da aplicação é dona das tabelas; sem `force`, o dono ignoraria as políticas). Policies `for all using (is_member(workspace_id)) with check (is_member(workspace_id))`.
+- Sem `app.usuario_id` definido, nenhuma linha de domínio é visível. Isso falha fechado: esquecer `comUsuario` resulta em dados vazios, nunca em vazamento.
+- Tabelas do Better Auth não têm RLS; só o código do Better Auth e a rotina de limpeza da demo as acessam.
 
-**Funções SQL:** `resumo_mensal(ws, de, ate)`, `gastos_por_categoria(ws, de, ate)`, `orcamento_vs_realizado(ws, mes)`, `importar_lancamentos(ws, conta, arquivo, formato, linhas jsonb)` (transação única, `on conflict do nothing`, retorna inseridos/ignorados), `desfazer_importacao(id)`, `criar_workspace(nome, tipo)`, `semear_demo()`.
+**Funções SQL:** `resumo_mensal(ws, de, ate)`, `gastos_por_categoria(ws, de, ate)`, `orcamento_vs_realizado(ws, mes)`, `importar_lancamentos(ws, conta, arquivo, formato, linhas jsonb)` (transação única, `on conflict do nothing`, retorna inseridos/ignorados), `desfazer_importacao(id)`, `criar_workspace(nome, tipo)`, `semear_demo()` (as duas últimas usam `usuario_atual()`).
 
 ## Telas e fluxos
 
@@ -64,7 +75,7 @@ Stack: Tailwind, shadcn/ui, Recharts, Zod, `@supabase/ssr`, `next-intl`, Papapar
 - `/w/[id]/config` contas, categorias, regras.
 - Seletor de workspace no cabeçalho (alternância Pessoal/Empresa).
 
-**Demo isolada:** botão → `signInAnonymously` → `semear_demo()` cria para o usuário "Família Silva" (pessoal) e "Padaria Bom Pão" (empresa) com 12 meses de dados fictícios → redireciona ao dashboard. Vercel Cron diário em `/api/demo/limpar` (protegido por `CRON_SECRET`) apaga usuários anônimos com mais de 24h (cascade nos dados).
+**Demo isolada:** botão → login anônimo do Better Auth (plugin anônimo) → `semear_demo()` dentro de `comUsuario` cria para o usuário "Família Silva" (pessoal) e "Padaria Bom Pão" (empresa) com 12 meses de dados fictícios → redireciona ao dashboard. Vercel Cron diário em `/api/demo/limpar` (protegido por `CRON_SECRET`) apaga da tabela `user` os anônimos criados há mais de 24h (cascade nos dados).
 
 ## Edições (pessoal / portfólio)
 
@@ -73,10 +84,10 @@ Mesmo código, dois deploys. Variável `NEXT_PUBLIC_EDICAO` (`pessoal` | `portfo
 | Recurso | pessoal | portfolio |
 |---|---|---|
 | Demo anônima (landing com botão demo) | não | sim |
-| Cadastro de novas contas | fechado (desabilitado no Supabase Auth; UI esconde) | aberto |
+| Cadastro de novas contas | fechado (Better Auth com cadastro desabilitado no servidor; UI esconde) | aberto |
 | Metas, PWA, orientador | sim | sim |
 
-Infra: dois projetos Supabase na nova organização (`financeiro-pessoal`, `financeiro-portfolio`) com as mesmas migrações; dois projetos Vercel apontando para o mesmo repositório. Na edição pessoal, `/` redireciona para `/login` ou para o último workspace.
+Infra: dois projetos Neon (`financeiro-pessoal`, `financeiro-portfolio`) com as mesmas migrações; dois projetos Vercel apontando para o mesmo repositório. Na edição pessoal, a conta do dono é criada por script (`npm run criar-usuario`) antes de fechar o cadastro. Na edição pessoal, `/` redireciona para `/login` ou para o último workspace.
 
 ## Metas de poupança
 
@@ -127,17 +138,18 @@ Telas: `/w/[id]/orientacoes` (alertas ativos + biblioteca com busca por título/
 
 ```
 src/app/                   rotas (finas)
-src/lib/supabase/          server.ts, client.ts, middleware
+src/db/                    cliente Drizzle (Pool), schema.ts, com-usuario.ts
+src/lib/auth.ts            instância Better Auth (servidor); auth-client.ts (navegador)
 src/lib/money.ts           parse "1.234,56" -> centavos; formatar BRL
 src/features/importacao/   parse-ofx.ts, parse-csv.ts, id-externo.ts, aplicar-regras.ts, actions.ts, componentes
 src/features/lancamentos/  queries.ts, actions.ts, componentes
 src/features/orcamento/
 src/features/dashboard/    queries (rpc) + gráficos
 src/features/demo/         action de entrada, rota de limpeza
-supabase/migrations/       esquema, RLS, funções, seed demo
+db/migrations/             esquema, RLS, funções, seed demo (drizzle-kit)
 messages/pt-BR.json
 ```
-Parsers, money, id-externo e regras são funções puras sem dependência de Supabase.
+Parsers, money, id-externo e regras são funções puras sem dependência de banco.
 
 ## Tratamento de erros
 
@@ -149,7 +161,7 @@ Parsers, money, id-externo e regras são funções puras sem dependência de Sup
 ## Testes
 
 - Vitest (TDD): parse-ofx (fixtures anonimizadas estilo Itaú, Nubank, Inter), parse-csv (`;`, `1.234,56`, `dd/mm/aaaa`), money, id-externo, aplicar-regras, calcularMeta, cada regra do orientador, carregamento/validação do frontmatter da biblioteca (toda `dica` referenciada por regra existe).
-- Teste de isolamento RLS: script com dois usuários; B não lê nem grava dados do workspace de A.
+- Teste de isolamento RLS (contra a branch `dev` do Neon): dois usuários; B não lê nem grava dados do workspace de A; consulta sem `comUsuario` não vê nenhuma linha.
 - Playwright: (1) demo → dashboard → troca para Empresa; (2) importar OFX → prévia → confirmar → dashboard → desfazer.
 - GitHub Actions: lint, typecheck, Vitest em todo push.
 

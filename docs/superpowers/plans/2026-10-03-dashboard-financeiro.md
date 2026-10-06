@@ -1,22 +1,25 @@
 # Dashboard Financeiro — Implementation Plan
 
 > Revisão 2 (2026-10-03): Tasks 12-16 adicionadas (edições, metas, PWA, orientador, publicação pessoal); demo e E2E renumeradas para 17-18.
+> Revisão 3 (2026-10-05): Supabase → Neon + Better Auth + Drizzle. Tasks 3, 7, 16 e 17 reescritas; nas demais, "migração" = arquivo SQL em `db/migrations/` criado com `npx drizzle-kit generate --custom --name <nome>` e aplicado com `npm run db:migrate`; chamadas a funções SQL usam `tx.execute(sql\`select ...\`)` dentro de `comUsuario`.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Entregar a v1 do dashboard financeiro (Pessoal/Empresa, importação CSV/OFX, orçamento vs realizado, demo isolada) publicada na Vercel.
 
-**Architecture:** Next.js App Router com Server Actions; Supabase Postgres com RLS por workspace; agregações e importação atômica em funções SQL; lógica de parsing em funções puras testadas com Vitest.
+**Architecture:** Next.js App Router com Server Actions; Neon Postgres com RLS por workspace (usuário informado por `set_config` em cada transação); Better Auth para login; agregações e importação atômica em funções SQL; lógica de parsing em funções puras testadas com Vitest.
 
-**Tech Stack:** Next.js + TypeScript, Tailwind, shadcn/ui, Recharts, Zod, @supabase/ssr, next-intl, Papaparse, Vitest, Playwright, Supabase CLI, GitHub Actions, Vercel.
+**Tech Stack:** Next.js + TypeScript, Tailwind, shadcn/ui, Recharts, Zod, Drizzle ORM + drizzle-kit, @neondatabase/serverless (Pool/WebSocket), Better Auth, next-intl, Papaparse, Vitest, Playwright, GitHub Actions, Vercel.
+
+**Docs obrigatórias antes de codar:** Better Auth (instalação Next.js, adaptador Drizzle, `emailAndPassword` com bloqueio de cadastro, plugin anônimo) e Drizzle + Neon (`drizzle-orm/neon-serverless`). Ler a documentação oficial atual; não confiar em memória. Next 16: ver `node_modules/next/dist/docs/` (AGENTS.md).
 
 **Spec:** `docs/superpowers/specs/2026-10-03-dashboard-financeiro-design.md` (seção acima neste arquivo).
 
 ## Pré-requisitos manuais (feitos pelo usuário)
 
-1. Criar nova organização no Supabase com dois projetos (região São Paulo): `financeiro-pessoal` (Auth: desabilitar novos cadastros após criar sua conta — Task 16) e `financeiro-portfolio` (habilitar **Anonymous sign-ins** — Task 17). Desenvolvimento usa `financeiro-pessoal`.
-2. Criar repositório público no GitHub `dashboard-financeiro`.
-3. Preencher `.env.local` (nunca commitado): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`.
+1. Criar conta no Neon (neon.com) e o projeto `financeiro-pessoal` (região mais próxima disponível, ex.: AWS São Paulo se houver) com uma branch `dev`. O projeto `financeiro-portfolio` só na Task 17.
+2. ~~Criar repositório público no GitHub~~ (feito).
+3. Preencher `.env.local` (nunca commitado): `DATABASE_URL` (connection string da branch `dev`, versão **pooled**), `BETTER_AUTH_SECRET` (gerar com `npx @better-auth/cli secret` ou 32+ bytes aleatórios), `BETTER_AUTH_URL=http://localhost:3000`, `NEXT_PUBLIC_EDICAO=pessoal`, `CRON_SECRET`.
 
 Pasta do projeto: `D:\Portfolio\dashboard-financeiro` (mover a sessão para lá com `change_directory` antes da Task 1).
 
@@ -28,7 +31,8 @@ Pasta do projeto: `D:\Portfolio\dashboard-financeiro` (mover a sessão para lá 
 - Datas de lançamento como string `YYYY-MM-DD` / tipo `date`; nunca converter via `new Date()` com fuso.
 - Todo texto de UI vem de `messages/pt-BR.json` via next-intl.
 - Server Actions retornam `ActionResult<T> = { ok: true; data: T } | { ok: false; erro: string; campos?: Record<string, string> }`.
-- `service_role` usada apenas em `src/app/api/demo/limpar/route.ts` e nos testes de integração.
+- Toda leitura/escrita de tabela de domínio passa por `comUsuario(userId, fn)` (Task 3). Acesso fora dele só nas tabelas do Better Auth, em `src/app/api/demo/limpar/route.ts` e nos helpers de teste.
+- Banco só no servidor (`import 'server-only'` em `src/db/*`).
 - Nomes de domínio em português (tabelas, colunas, funções), conforme o spec.
 
 ## Review Focus
@@ -73,24 +77,34 @@ expect(formatarBRL(-123456).replace(/\s/g, ' ')).toBe('-R$ 1.234,56')
 - [ ] **Step 3:** Implementar. Regra: com vírgula, ela é decimal e pontos são milhar; sem vírgula, ponto seguido de 1-2 dígitos finais é decimal, senão milhar. Conversão por string (sem multiplicar float). `formatarBRL` via `Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })`.
 - [ ] **Step 4:** PASS. **Step 5:** commit `feat: utilitários de dinheiro`.
 
-### Task 3: Esquema, RLS e teste de isolamento
+### Task 3: Banco Neon, esquema, RLS e teste de isolamento
 
-**Files:** Create `supabase/migrations/0001_esquema.sql`, `0002_rls.sql`, `0003_funcoes_workspace.sql`; Test `tests/integracao/rls.test.ts`, helper `tests/integracao/usuarios.ts` (cria/apaga usuários com service role).
+**Files:** Create `drizzle.config.ts`, `src/db/{cliente.ts,schema.ts,auth-schema.ts,com-usuario.ts}`, `db/migrations/*` (gerados), migrações customizadas `db/migrations/*_rls.sql`, `*_funcoes_workspace.sql`; Test `tests/integracao/rls.test.ts`, helper `tests/integracao/usuarios.ts` (insere/apaga linhas em `user` diretamente). Scripts `db:generate` (`drizzle-kit generate`), `db:migrate` (`drizzle-kit migrate`). Deps: `drizzle-orm @neondatabase/serverless ws better-auth server-only`; dev: `drizzle-kit @types/ws dotenv`. **Remover** `@supabase/ssr @supabase/supabase-js` (instalados na Task 1) e trocar as variáveis do `.env.example` pelas da seção de pré-requisitos.
 
-**Interfaces — Produces:** tabelas/colunas exatamente como no spec; `is_member(ws uuid) returns boolean`; `criar_workspace(p_nome text, p_tipo text) returns uuid` (insere workspace, membro `dono` e categorias padrão do tipo).
+**Interfaces — Produces:**
+```ts
+// src/db/cliente.ts — Pool WebSocket (neonConfig.webSocketConstructor = ws em Node)
+export const db: NeonDatabase<typeof schema>
+// src/db/com-usuario.ts
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
+export async function comUsuario<T>(userId: string, fn: (tx: Tx) => Promise<T>): Promise<T>
+// abre db.transaction, executa sql`select set_config('app.usuario_id', ${userId}, true)`, depois fn(tx)
+```
+SQL: `usuario_atual() returns text`; `is_member(ws uuid) returns boolean`; `criar_workspace(p_nome text, p_tipo text) returns uuid` (insere workspace com `criado_por = usuario_atual()`, membro `dono` e categorias padrão do tipo; erro se `usuario_atual()` for nulo). Tabelas do Better Auth geradas com `npx @better-auth/cli generate` para `src/db/auth-schema.ts` (conferir comando na doc atual).
 
 Categorias padrão — pessoal: Salário, Outras receitas, Moradia, Alimentação, Transporte, Saúde, Lazer, Educação, Outros. Empresa: Vendas, Serviços, Outras receitas, Fornecedores, Folha, Impostos, Aluguel, Marketing, Outros.
 
-- [ ] **Step 1: Teste que falha:**
-  - A cria workspace via `rpc('criar_workspace')`, insere conta e lançamento.
-  - `B.from('lancamentos').select()` → `[]`.
-  - `B.from('lancamentos').insert({ workspace_id: wsA, ... })` → erro.
-  - `B.from('workspaces').select().eq('id', wsA)` → `[]`.
+- [ ] **Step 1: Teste que falha** (`rls.test.ts`, usuários A e B inseridos em `user` pelo helper e apagados no `afterAll`):
+  - `comUsuario(A, tx => tx.execute(sql\`select criar_workspace('Casa', 'pessoal')\`))` retorna id; A insere conta e lançamento.
+  - `comUsuario(B, tx => tx.select().from(lancamentos))` → `[]`.
+  - `comUsuario(B, tx => tx.insert(lancamentos).values({ workspaceId: wsA, ... }))` → rejeita (violação de política).
+  - `comUsuario(B, ...)` select em `workspaces` por `wsA` → `[]`.
+  - `db.select().from(lancamentos)` **sem** `comUsuario` → `[]` (falha fechado).
   - A vê 9 categorias padrão.
-- [ ] **Step 2:** `supabase link` + `supabase db push` (vazio); rodar → FAIL.
-- [ ] **Step 3:** Migrações. `is_member`: `security definer`, `stable`, `set search_path = public`. Policies `for all using (is_member(workspace_id)) with check (is_member(workspace_id))` em todas as tabelas com `workspace_id`; `workspaces`: select por `is_member(id)`, criação só via `criar_workspace`. Índices: `lancamentos(workspace_id, data)`, unique `(conta_id, id_externo)`.
-- [ ] **Step 4:** `supabase db push`; `npm run test:integracao` → PASS.
-- [ ] **Step 5:** commit `feat: esquema, RLS e criação de workspace`.
+- [ ] **Step 2:** Configurar `drizzle.config.ts` (`dialect: 'postgresql'`, `schema: './src/db/*schema.ts'`, `out: './db/migrations'`, url de `DATABASE_URL` via dotenv `.env.local`); rodar teste → FAIL (tabelas inexistentes).
+- [ ] **Step 3:** Schema Drizzle das tabelas do spec (domínio + auth). `npm run db:generate`. Migrações customizadas: `usuario_atual`, `is_member` (`security definer`, `stable`, `set search_path = public`), `enable` + `force row level security` em todas as tabelas de domínio, policies `for all using (is_member(workspace_id)) with check (is_member(workspace_id))`; `workspaces`: select/update por `is_member(id)`, insert só via `criar_workspace` (`security definer`). Índices: `lancamentos(workspace_id, data)`, unique `(conta_id, id_externo)`.
+- [ ] **Step 4:** `npm run db:migrate` (branch `dev`); `npm run test:integracao` → PASS.
+- [ ] **Step 5:** commit `feat: banco Neon, esquema, RLS e criação de workspace`.
 
 ### Task 4: Parser CSV
 
@@ -147,12 +161,12 @@ aplicarRegras<T extends { descricao: string }>(linhas: T[], regras: Regra[]): (T
 
 ### Task 7: Autenticação, workspaces e layout
 
-**Files:** Create `src/lib/supabase/server.ts`, `client.ts`, `src/middleware.ts`, `src/lib/action-result.ts`, `src/app/login/{page.tsx,actions.ts}`, `src/app/novo/{page.tsx,actions.ts}`, `src/app/w/[id]/layout.tsx`, `src/features/workspaces/{queries.ts,seletor-workspace.tsx}`.
+**Files:** Create `src/lib/auth.ts` (instância Better Auth: `drizzleAdapter(db, { provider: 'pg', schema })`, `emailAndPassword: { enabled: true }`, plugin `nextCookies`), `src/lib/auth-client.ts`, `src/app/api/auth/[...all]/route.ts`, `src/lib/sessao.ts`, proteção de rotas (no Next 16 o antigo `middleware.ts` pode ter outro nome; conferir em `node_modules/next/dist/docs/`), `src/lib/action-result.ts`, `src/app/login/{page.tsx,actions.ts}`, `src/app/cadastro/page.tsx`, `src/app/novo/{page.tsx,actions.ts}`, `src/app/w/[id]/layout.tsx`, `src/features/workspaces/{queries.ts,seletor-workspace.tsx}`.
 
-**Interfaces — Produces:** `criarClienteServidor(): Promise<SupabaseClient>`; `obterWorkspace(id: string): Promise<Workspace>` (chama `notFound()` quando RLS não retorna linha); `listarWorkspaces(): Promise<Workspace[]>`; type `ActionResult<T>`.
+**Interfaces — Consumes:** `db`, `comUsuario` (Task 3). **Produces:** `exigirUsuario(): Promise<{ id: string; nome: string; isAnonymous: boolean }>` (redireciona para `/login` sem sessão); `obterWorkspace(id: string): Promise<Workspace>` (via `comUsuario`; `notFound()` quando RLS não retorna linha ou id não é uuid); `listarWorkspaces(): Promise<Workspace[]>`; type `ActionResult<T>`.
 
-- [ ] **Step 1:** Login/logout por e-mail e senha; middleware renova sessão e redireciona não autenticados de `/w/*` e `/novo` para `/login`.
-- [ ] **Step 2:** `/novo` (Zod: nome 2-60 chars, tipo `pessoal|empresa`) → `rpc('criar_workspace')` → redirect `/w/[id]`.
+- [ ] **Step 1:** Configurar Better Auth conforme doc atual; login, cadastro e logout por e-mail e senha; proteção redireciona não autenticados de `/w/*` e `/novo` para `/login` (checagem otimista por cookie na borda + `exigirUsuario()` em cada página/action, que é a checagem real).
+- [ ] **Step 2:** `/novo` (Zod: nome 2-60 chars, tipo `pessoal|empresa`) → `comUsuario(u.id, tx => tx.execute(sql\`select criar_workspace(...)\`))` → redirect `/w/[id]`.
 - [ ] **Step 3:** Layout `/w/[id]`: cabeçalho, navegação (Dashboard, Lançamentos, Importar, Orçamento, Config), seletor de workspace com badge do tipo.
 - [ ] **Step 4: Verificar:** criar conta, criar workspace Pessoal e Empresa, alternar; `/w/<uuid aleatório>` → 404; lint/typecheck/test verdes.
 - [ ] **Step 5:** Primeiro deploy na Vercel com env vars; commit `feat: auth e workspaces`.
@@ -171,7 +185,7 @@ aplicarRegras<T extends { descricao: string }>(linhas: T[], regras: Regra[]): (T
 
 ### Task 9: Importação (SQL + fluxo)
 
-**Files:** Create `supabase/migrations/0004_importacao.sql`; `src/features/importacao/{actions.ts,fluxo-importacao.tsx,previa.tsx,historico.tsx}`; `src/app/w/[id]/importar/page.tsx`; Test `tests/integracao/importacao.test.ts`.
+**Files:** Create migração `importacao`; `src/features/importacao/{actions.ts,fluxo-importacao.tsx,previa.tsx,historico.tsx}`; `src/app/w/[id]/importar/page.tsx`; Test `tests/integracao/importacao.test.ts`.
 
 **Interfaces — Consumes:** `decodificarArquivo`, `parseOfx`, `parseCsv`, `detectarColunasCsv`, `atribuirIdsExternos`, `aplicarRegras`. **Produces:** SQL `importar_lancamentos(p_ws uuid, p_conta uuid, p_arquivo text, p_formato text, p_linhas jsonb) returns table(importacao_id uuid, inseridos int, ignorados int)`; `desfazer_importacao(p_id uuid) returns void`; actions `previaImportacao(fd: FormData): Promise<ActionResult<{ linhas: (LinhaImportada & { idExterno: string; categoriaId: string | null; duplicado: boolean })[]; erros: ErroLinha[]; colunasCsv?: string[] }>>` e `confirmarImportacao(ws, contaId, arquivo, formato, linhas): Promise<ActionResult<{ inseridos: number; ignorados: number }>>`.
 
@@ -183,7 +197,7 @@ aplicarRegras<T extends { descricao: string }>(linhas: T[], regras: Regra[]): (T
 
 ### Task 10: Dashboard
 
-**Files:** Create `supabase/migrations/0005_dashboard.sql`; `src/features/dashboard/{queries.ts,kpis.tsx,grafico-mensal.tsx,grafico-categorias.tsx,orcamento-resumo.tsx,a-pagar-receber.tsx}`; `src/app/w/[id]/page.tsx`; Test `tests/integracao/dashboard.test.ts`.
+**Files:** Create migração `dashboard`; `src/features/dashboard/{queries.ts,kpis.tsx,grafico-mensal.tsx,grafico-categorias.tsx,orcamento-resumo.tsx,a-pagar-receber.tsx}`; `src/app/w/[id]/page.tsx`; Test `tests/integracao/dashboard.test.ts`.
 
 **Interfaces — Produces:** `resumo_mensal(p_ws uuid, p_de date, p_ate date) returns table(mes date, entradas bigint, saidas bigint, resultado bigint)` (meses vazios com zero via `generate_series`; só `efetivado`); `gastos_por_categoria(p_ws, p_de, p_ate) returns table(categoria_id uuid, nome text, cor text, total bigint)` (sem categoria → "Sem categoria"); `orcamento_vs_realizado(p_ws uuid, p_mes date) returns table(categoria_id uuid, nome text, orcado bigint, realizado bigint, percentual numeric)` (`percentual` nulo quando `orcado = 0`).
 
@@ -214,7 +228,7 @@ aplicarRegras<T extends { descricao: string }>(linhas: T[], regras: Regra[]): (T
 
 ### Task 13: Metas de poupança
 
-**Files:** Create `supabase/migrations/0006_metas.sql`; `src/features/metas/{calcular-meta.ts,calcular-meta.test.ts,queries.ts,actions.ts,card-meta.tsx,form-aporte.tsx}`; `src/app/w/[id]/metas/page.tsx`; Modify `src/app/w/[id]/page.tsx` (card resumo); `tests/integracao/rls.test.ts` (incluir `metas`, `aportes_meta`).
+**Files:** Create migração `metas`; `src/features/metas/{calcular-meta.ts,calcular-meta.test.ts,queries.ts,actions.ts,card-meta.tsx,form-aporte.tsx}`; `src/app/w/[id]/metas/page.tsx`; Modify `src/app/w/[id]/page.tsx` (card resumo); `tests/integracao/rls.test.ts` (incluir `metas`, `aportes_meta`).
 
 **Interfaces — Produces:**
 ```ts
@@ -233,7 +247,7 @@ Actions: `criarMeta`, `editarMeta`, `excluirMeta`, `registrarAporte(ws, metaId, 
   - dataAlvo no passado e guardado < alvo → `'vencida'`, `mesesRestantes 1`.
   - dataAlvo no mês atual → `mesesRestantes 1`. `necessarioPorMes` arredonda para cima ao centavo.
 - [ ] **Step 2:** FAIL → implementar (aritmética de meses sobre `YYYY-MM`, sem `Date`) → PASS.
-- [ ] **Step 3:** Migração (tabelas do spec, RLS `is_member`, FK `meta_id on delete cascade`); estender `rls.test.ts`; `supabase db push`; `npm run test:integracao` → PASS.
+- [ ] **Step 3:** Migração (tabelas do spec, RLS `is_member`, FK `meta_id on delete cascade`); estender `rls.test.ts`; `npm run db:migrate`; `npm run test:integracao` → PASS.
 - [ ] **Step 4:** Tela de metas (cards com barra de progresso, "R$ X/mês necessários · sua sobra média R$ Y", situação colorida) e card resumo no dashboard. Verificar no navegador.
 - [ ] **Step 5:** commit `feat: metas de poupança`.
 
@@ -251,7 +265,7 @@ Actions: `criarMeta`, `editarMeta`, `excluirMeta`, `registrarAporte(ws, metaId, 
 
 ### Task 15: Orientador por regras e biblioteca "Aprenda"
 
-**Files:** Create `supabase/migrations/0007_orientador.sql`; `src/features/orientador/{tipos.ts,contexto.ts,motor.ts,motor.test.ts,regras/*.ts,regras/*.test.ts,conteudo/*.md,biblioteca.ts,biblioteca.test.ts,actions.ts,lista-alertas.tsx,card-alertas.tsx}`; páginas `src/app/w/[id]/orientacoes/page.tsx`, `src/app/w/[id]/orientacoes/[slug]/page.tsx`; Modify `src/app/w/[id]/page.tsx`, config (limites). Dev dep: `gray-matter`.
+**Files:** Create migração `orientador`; `src/features/orientador/{tipos.ts,contexto.ts,motor.ts,motor.test.ts,regras/*.ts,regras/*.test.ts,conteudo/*.md,biblioteca.ts,biblioteca.test.ts,actions.ts,lista-alertas.tsx,card-alertas.tsx}`; páginas `src/app/w/[id]/orientacoes/page.tsx`, `src/app/w/[id]/orientacoes/[slug]/page.tsx`; Modify `src/app/w/[id]/page.tsx`, config (limites). Dev dep: `gray-matter`.
 
 **Interfaces — Consumes:** `resumo_mensal`, `gastos_por_categoria`, `orcamento_vs_realizado` (Task 10), `listarMetas`/`calcularMeta` (Task 13). **Produces:**
 ```ts
@@ -287,20 +301,24 @@ Valores monetários nos textos via `formatarBRL`. `chave` identifica a instânci
 
 ### Task 16: Publicação pessoal
 
-- [ ] **Step 1:** Projeto Vercel `financeiro-pessoal` ligado ao repositório, env `NEXT_PUBLIC_EDICAO=pessoal` + chaves do Supabase `financeiro-pessoal` (preenchidas pelo usuário no painel).
-- [ ] **Step 2:** Usuário cria sua conta na URL publicada; depois desabilita "Allow new users to sign up" no Supabase Auth do `financeiro-pessoal`.
+**Files:** Create `scripts/criar-usuario.ts` (script `criar-usuario`: lê e-mail/nome/senha de prompts no terminal, cria o usuário pela API do servidor do Better Auth ignorando o bloqueio de cadastro, conforme doc atual). Modify `src/lib/auth.ts` (cadastro por e-mail desabilitado quando `!recursos(obterEdicao()).cadastroAberto`).
+
+- [ ] **Step 1:** `npm run db:migrate` na branch `main` do Neon `financeiro-pessoal`. Projeto Vercel `financeiro-pessoal` ligado ao repositório, env: `DATABASE_URL` (branch `main`, pooled), `BETTER_AUTH_SECRET` (novo, diferente do dev), `BETTER_AUTH_URL` (URL da Vercel), `NEXT_PUBLIC_EDICAO=pessoal` (preenchidas pelo usuário no painel).
+- [ ] **Step 2:** Usuário roda `npm run criar-usuario` apontando para a branch `main` e digita a própria senha no terminal (Claude não digita senhas).
 - [ ] **Step 3: Verificar:** tentativa de cadastro com outro e-mail falha; login funciona no celular; app instala na tela inicial; lançamento rápido grava.
 - [ ] **Step 4:** A URL pessoal não é publicada no README (fica só com o usuário). Commit se houver alterações.
 
 ### Task 17: Demo isolada (edição portfólio)
 
-**Files:** Create `supabase/migrations/0008_demo.sql`; `src/features/demo/{actions.ts,banner-demo.tsx}`; `src/app/api/demo/limpar/route.ts`; `vercel.json` (cron `0 6 * * *`); `src/app/page.tsx` (landing).
+**Files:** Create migração `demo`; `src/features/demo/{actions.ts,banner-demo.tsx}`; `src/app/api/demo/limpar/route.ts`; `vercel.json` (cron `0 6 * * *`); `src/app/page.tsx` (landing).
 
-**Interfaces — Produces:** SQL `semear_demo() returns uuid` — para `auth.uid()` cria "Família Silva" (pessoal) e "Padaria Bom Pão" (empresa), 2 contas cada, 12 meses retroativos de lançamentos determinísticos (salário/vendas, contas fixas, variáveis), orçamentos do mês atual, 4 regras de categoria, 2 metas com aportes (uma "Reserva de emergência" atrasada) e, na Padaria, 6 pendentes nos próximos 30 dias; retorna id do workspace pessoal. Action `entrarComoDemo(): Promise<never>` (redirect).
+Pré-requisito: usuário cria o projeto Neon `financeiro-portfolio`; migrações aplicadas na branch `main`; projeto Vercel `financeiro-portfolio` com `NEXT_PUBLIC_EDICAO=portfolio`, `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CRON_SECRET`.
 
-- [ ] **Step 1:** Migração `semear_demo` (`security definer`; recusa se `auth.jwt()->>'is_anonymous'` não for `'true'` ou se o usuário já tiver workspace).
-- [ ] **Step 2:** Botão e action só existem quando `recursos(obterEdicao()).demo` (Task 12); na edição pessoal a action retorna erro. `entrarComoDemo`: `signInAnonymously()` → `rpc('semear_demo')` → redirect `/w/[id]`. Banner "Você está na demo — os dados somem em 24h" para usuário anônimo.
-- [ ] **Step 3:** Rota de limpeza: exige `Authorization: Bearer ${CRON_SECRET}` (senão 401); via `auth.admin.listUsers` apaga anônimos com `created_at` há mais de 24h (`auth.admin.deleteUser`); retorna `{ removidos: n }`.
+**Interfaces — Produces:** SQL `semear_demo() returns uuid` — para `usuario_atual()` cria "Família Silva" (pessoal) e "Padaria Bom Pão" (empresa), 2 contas cada, 12 meses retroativos de lançamentos determinísticos (salário/vendas, contas fixas, variáveis), orçamentos do mês atual, 4 regras de categoria, 2 metas com aportes (uma "Reserva de emergência" atrasada) e, na Padaria, 6 pendentes nos próximos 30 dias; retorna id do workspace pessoal. Action `entrarComoDemo(): Promise<never>` (redirect).
+
+- [ ] **Step 1:** Habilitar o plugin anônimo do Better Auth (gera coluna de anônimo na tabela `user`; rodar `db:generate`/`db:migrate`). Migração `semear_demo` (`security definer`; recusa se o usuário de `usuario_atual()` não for anônimo na tabela `user` ou se já tiver workspace).
+- [ ] **Step 2:** Botão e action só existem quando `recursos(obterEdicao()).demo` (Task 12); na edição pessoal a action retorna erro. `entrarComoDemo`: login anônimo do Better Auth (API do servidor, conforme doc) → `comUsuario(id, tx => tx.execute(sql\`select semear_demo()\`))` → redirect `/w/[id]`. Banner "Você está na demo — os dados somem em 24h" para usuário anônimo.
+- [ ] **Step 3:** Rota de limpeza: exige `Authorization: Bearer ${CRON_SECRET}` (senão 401); `delete from "user" where <anônimo> and created_at < now() - interval '24 hours'` (cascade apaga workspaces e dados); retorna `{ removidos: n }`. Teste de integração: usuário anônimo antigo é removido junto com seus workspaces; usuário normal permanece.
 - [ ] **Step 4: Verificar:** duas janelas anônimas entram na demo e não veem dados uma da outra; `curl` sem segredo → 401; com segredo → 200.
 - [ ] **Step 5:** commit `feat: demo isolada`.
 
