@@ -1,6 +1,7 @@
 # Dashboard Financeiro — Implementation Plan
 
 > Revisão 2 (2026-10-03): Tasks 12-16 adicionadas (edições, metas, PWA, orientador, publicação pessoal); demo e E2E renumeradas para 17-18.
+> Revisão 4 (2026-10-05): Task 15 (lançamento por voz) adicionada; orientador → 16, publicação pessoal → 17 (inclui conta do pai e membro), demo → 18, E2E → 19.
 > Revisão 3 (2026-10-05): Supabase → Neon + Better Auth + Drizzle. Tasks 3, 7, 16 e 17 reescritas; nas demais, "migração" = arquivo SQL em `db/migrations/` criado com `npx drizzle-kit generate --custom --name <nome>` e aplicado com `npm run db:migrate`; chamadas a funções SQL usam `tx.execute(sql\`select ...\`)` dentro de `comUsuario`.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -17,7 +18,7 @@
 
 ## Pré-requisitos manuais (feitos pelo usuário)
 
-1. Criar conta no Neon (neon.com) e o projeto `financeiro-pessoal` (região mais próxima disponível, ex.: AWS São Paulo se houver) com uma branch `dev`. O projeto `financeiro-portfolio` só na Task 17.
+1. Criar conta no Neon (neon.com) e o projeto `financeiro-pessoal` (região mais próxima disponível, ex.: AWS São Paulo se houver) com uma branch `dev`. O projeto `financeiro-portfolio` só na Task 18.
 2. ~~Criar repositório público no GitHub~~ (feito).
 3. Preencher `.env.local` (nunca commitado): `DATABASE_URL` (connection string da branch `dev`, versão **pooled**), `BETTER_AUTH_SECRET` (gerar com `npx @better-auth/cli secret` ou 32+ bytes aleatórios), `BETTER_AUTH_URL=http://localhost:3000`, `NEXT_PUBLIC_EDICAO=pessoal`, `CRON_SECRET`.
 
@@ -263,7 +264,36 @@ Actions: `criarMeta`, `editarMeta`, `excluirMeta`, `registrarAporte(ws, metaId, 
 - [ ] **Step 4: Verificar** com `resize_window` preset mobile: lançar um gasto em ≤ 3 toques após abrir o sheet; Lighthouse/Chrome reconhece o app como instalável (manifest válido). lint/typecheck/test verdes.
 - [ ] **Step 5:** commit `feat: PWA e lançamento rápido`.
 
-### Task 15: Orientador por regras e biblioteca "Aprenda"
+### Task 15: Lançamento por voz
+
+**Files:** Create `src/features/voz/{interpretar-fala.ts,interpretar-fala.test.ts,numeros-extenso.ts,numeros-extenso.test.ts,valor-por-extenso.ts,use-reconhecimento.ts,botao-voz.tsx,confirmacao-voz.tsx}`; Modify `src/app/w/[id]/page.tsx` (botão no topo), `src/features/lancamentos/lancamento-rapido.tsx` (aceitar valores iniciais; atalho de voz no sheet).
+
+**Interfaces — Consumes:** `aplicarRegras` (Task 6), `criarLancamento` e cookie `ultima_conta_<ws>` (Tasks 8/14), `formatarBRL`. **Produces:**
+```ts
+type FalaInterpretada = { ok: true; valorCentavos: number; descricao: string; data: string } // valor com sinal: saída negativa
+                      | { ok: false; motivo: 'vazio' | 'sem_valor' }
+interpretarFala(texto: string, hoje: string): FalaInterpretada
+extensoParaNumero(palavras: string): number | null        // "cinco mil e quinhentos" -> 5500
+valorPorExtenso(centavos: number): string                  // 20000 -> "duzentos reais" (para a fala de confirmação)
+useReconhecimento(): { suportado: boolean; ouvindo: boolean; parcial: string; iniciar(): void; parar(): void; final: string | null; erro: string | null }
+```
+
+- [ ] **Step 1: Testes que falham** (`hoje = '2026-10-15'`):
+  - `'200 reais para o senhor Jeová'` → `{ ok: true, valorCentavos: -20000, descricao: 'Para o senhor Jeová', data: '2026-10-15' }`.
+  - `'pagamento do boleto de 5 mil reais referente a financiamento da van Renault'` → `-500000`, descrição contém `'financiamento da van Renault'` e começa com maiúscula.
+  - `'R$ 1.500,50 conta de luz'` → `-150050`, `'Conta de luz'`.
+  - `'recebi 350 reais do João'` → `+35000`, descrição `'Do João'`.
+  - `'200 reais e 50 centavos padaria'` → `-20050`.
+  - `'cinco mil e quinhentos de aluguel'` → `-550000`.
+  - `'ontem paguei 80 reais de gasolina'` → `data: '2026-10-14'`; `'dia 20 paguei 50 reais'` → `data: '2026-09-20'`; `'dia 3 ...'` → `'2026-10-03'`.
+  - `'para o senhor Jeová'` → `{ ok: false, motivo: 'sem_valor' }`; `'   '` → `{ ok: false, motivo: 'vazio' }`.
+  - `extensoParaNumero`: `'duzentos'` → 200, `'mil e duzentos'` → 1200, `'dois mil e trinta'` → 2030, `'banana'` → null. `valorPorExtenso(20000)` → `'duzentos reais'`, `valorPorExtenso(150050)` → `'mil e quinhentos reais e cinquenta centavos'`.
+- [ ] **Step 2:** FAIL → implementar (normalizar: minúsculas, sem acento para casar palavras-chave mas descrição preserva acentos; datas por aritmética de string, sem `Date` com fuso) → PASS.
+- [ ] **Step 3:** `useReconhecimento` com `window.SpeechRecognition ?? window.webkitSpeechRecognition`, `lang 'pt-BR'`, `interimResults true`, `continuous false`; `suportado false` fora do navegador ou sem API. Erros `not-allowed` → mensagem "Permita o microfone nas configurações do navegador".
+- [ ] **Step 4:** Invocar a skill `frontend-design` antes do visual (pedir confirmação ao usuário conforme CLAUDE.md). `BotaoVoz` no topo do dashboard (~120px, alto contraste, animação de pulso respeitando `prefers-reduced-motion`, rótulo "Toque e fale", `aria-label`); `ConfirmacaoVoz` em tela cheia: valor ≥ 40px com cor por sinal, descrição, data, conta, categoria sugerida (`aplicarRegras`), botões "Está certo" e "Falar de novo" com ≥ 56px de altura, link "Corrigir" (abre lançamento rápido preenchido). Após salvar: `speechSynthesis.speak` com `'Anotado: ' + valorPorExtenso(|v|) + ' ' + descricao` em `pt-BR`. Sem suporte: botão "Use o Chrome para falar" abre lançamento rápido.
+- [ ] **Step 5: Verificar** no navegador: com `resize_window` mobile, fluxo completo simulando o resultado do reconhecimento (injetar `final` via props/teste de componente, já que o navegador do agente não tem microfone); no celular real do usuário, as duas frases de exemplo dele. lint/typecheck/test verdes. Commit `feat: lançamento por voz`.
+
+### Task 16: Orientador por regras e biblioteca "Aprenda"
 
 **Files:** Create migração `orientador`; `src/features/orientador/{tipos.ts,contexto.ts,motor.ts,motor.test.ts,regras/*.ts,regras/*.test.ts,conteudo/*.md,biblioteca.ts,biblioteca.test.ts,actions.ts,lista-alertas.tsx,card-alertas.tsx}`; páginas `src/app/w/[id]/orientacoes/page.tsx`, `src/app/w/[id]/orientacoes/[slug]/page.tsx`; Modify `src/app/w/[id]/page.tsx`, config (limites). Dev dep: `gray-matter`.
 
@@ -299,16 +329,16 @@ Valores monetários nos textos via `formatarBRL`. `chave` identifica a instânci
 - [ ] **Step 4:** Migração (`config_orientador`, `alertas_dispensados`, RLS) + `montarContexto` + action `dispensarAlerta`; telas `/orientacoes`, `/orientacoes/[slug]`, card no dashboard (3 primeiros), limites em config. `npm run test:integracao` (RLS das novas tabelas) → PASS.
 - [ ] **Step 5: Verificar** no navegador com dados que disparem ao menos 3 regras. Commit `feat: orientador financeiro por regras`.
 
-### Task 16: Publicação pessoal
+### Task 17: Publicação pessoal
 
-**Files:** Create `scripts/criar-usuario.ts` (script `criar-usuario`: lê e-mail/nome/senha de prompts no terminal, cria o usuário pela API do servidor do Better Auth ignorando o bloqueio de cadastro, conforme doc atual). Modify `src/lib/auth.ts` (cadastro por e-mail desabilitado quando `!recursos(obterEdicao()).cadastroAberto`).
+**Files:** Create `scripts/criar-usuario.ts` (script `criar-usuario`: lê e-mail/nome/senha de prompts no terminal, cria o usuário pela API do servidor do Better Auth ignorando o bloqueio de cadastro, conforme doc atual), `scripts/adicionar-membro.ts` (script `adicionar-membro`: pede e-mail do dono do workspace, nome do workspace e e-mail do novo membro; insere em `workspace_members` com papel `membro`; erro claro se algum não existir; idempotente). Modify `src/lib/auth.ts` (cadastro por e-mail desabilitado quando `!recursos(obterEdicao()).cadastroAberto`); migração `papel_membro` (check de `papel` aceita `dono` e `membro`). Test `tests/integracao/membro.test.ts`: membro vê e grava no workspace do dono; dono não vê workspaces do membro.
 
 - [ ] **Step 1:** `npm run db:migrate` na branch `main` do Neon `financeiro-pessoal`. Projeto Vercel `financeiro-pessoal` ligado ao repositório, env: `DATABASE_URL` (branch `main`, pooled), `BETTER_AUTH_SECRET` (novo, diferente do dev), `BETTER_AUTH_URL` (URL da Vercel), `NEXT_PUBLIC_EDICAO=pessoal` (preenchidas pelo usuário no painel).
-- [ ] **Step 2:** Usuário roda `npm run criar-usuario` apontando para a branch `main` e digita a própria senha no terminal (Claude não digita senhas).
-- [ ] **Step 3: Verificar:** tentativa de cadastro com outro e-mail falha; login funciona no celular; app instala na tela inicial; lançamento rápido grava.
+- [ ] **Step 2:** Usuário roda `npm run criar-usuario` apontando para a branch `main` duas vezes: para si e para o pai (digita as senhas no terminal; Claude não digita senhas). Cada um faz login e cria seu workspace pessoal; depois o usuário roda `npm run adicionar-membro` para entrar como membro do workspace do pai.
+- [ ] **Step 3: Verificar:** tentativa de cadastro com outro e-mail falha; login funciona no celular; app instala na tela inicial; lançamento rápido grava; no celular do pai, lançamento por voz grava e aparece no seletor de workspace do usuário como "Pai".
 - [ ] **Step 4:** A URL pessoal não é publicada no README (fica só com o usuário). Commit se houver alterações.
 
-### Task 17: Demo isolada (edição portfólio)
+### Task 18: Demo isolada (edição portfólio)
 
 **Files:** Create migração `demo`; `src/features/demo/{actions.ts,banner-demo.tsx}`; `src/app/api/demo/limpar/route.ts`; `vercel.json` (cron `0 6 * * *`); `src/app/page.tsx` (landing).
 
@@ -322,7 +352,7 @@ Pré-requisito: usuário cria o projeto Neon `financeiro-portfolio`; migrações
 - [ ] **Step 4: Verificar:** duas janelas anônimas entram na demo e não veem dados uma da outra; `curl` sem segredo → 401; com segredo → 200.
 - [ ] **Step 5:** commit `feat: demo isolada`.
 
-### Task 18: E2E, README e publicação do portfólio
+### Task 19: E2E, README e publicação do portfólio
 
 **Files:** Create `playwright.config.ts`, `e2e/demo.spec.ts`, `e2e/importacao.spec.ts`, `README.md`, `docs/demo.gif`.
 

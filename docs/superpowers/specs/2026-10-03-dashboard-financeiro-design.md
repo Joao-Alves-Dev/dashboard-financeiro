@@ -14,7 +14,7 @@ Restrições: 5-8h/semana. Custo zero: Neon (plano grátis: 100 projetos, 0,5 GB
 
 ## Escopo por fase
 
-- **v1 (este spec):** workspaces Pessoal/Empresa, contas, categorias, lançamentos (CRUD), importação CSV/OFX com prévia/dedupe/desfazer, regras de categorização, orçamento vs realizado, dashboard, demo isolada, **metas de poupança, PWA com lançamento rápido, orientador por regras + biblioteca "Aprenda"**.
+- **v1 (este spec):** workspaces Pessoal/Empresa, contas, categorias, lançamentos (CRUD), importação CSV/OFX com prévia/dedupe/desfazer, regras de categorização, orçamento vs realizado, dashboard, demo isolada, **metas de poupança, PWA com lançamento rápido, lançamento por voz, orientador por regras + biblioteca "Aprenda"**.
 - **Ordem de entrega:** núcleo comum → recursos pessoais (metas, PWA, orientador) → publicação pessoal → demo e material de portfólio.
 - **Futuro opcional:** assistente com IA generativa (Claude API, Sonnet 5.5), ativado só se houver `ANTHROPIC_API_KEY`; reutiliza o contexto do orientador.
 - **v2 (fora):** projeção de caixa, lançamentos recorrentes.
@@ -36,7 +36,7 @@ Ambientes Neon: cada projeto tem branch `main` (produção) e branch `dev` (dese
 | Tabela | Campos principais |
 |---|---|
 | `workspaces` | id, nome, tipo (`pessoal`/`empresa`), criado_por, criado_em |
-| `workspace_members` | workspace_id, user_id (text, FK `user.id` do Better Auth), papel (`dono` na v1) — PK composta |
+| `workspace_members` | workspace_id, user_id (text, FK `user.id` do Better Auth), papel (`dono` ou `membro`; mesmas permissões na v1) — PK composta |
 | `contas` | id, workspace_id, nome, tipo (`corrente`/`cartao`/`dinheiro`), saldo_inicial_centavos, mapeamento_csv (jsonb, opcional) |
 | `categorias` | id, workspace_id, nome, natureza (`receita`/`despesa`), cor |
 | `lancamentos` | id, workspace_id, conta_id, categoria_id (nullable), data, descricao, valor_centavos (bigint, + entrada / − saída), status (`efetivado`/`pendente`), id_externo, importacao_id (nullable) |
@@ -109,6 +109,23 @@ Tabelas:
 - Layout mobile-first; em telas < 768px, barra inferior: Início, Lançamentos, **+**, Metas, Orientações. Desktop mantém navegação lateral/superior.
 - Botão **+** abre o **lançamento rápido** (sheet): valor com `inputMode="decimal"`, tipo "saída" por padrão, chips das 6 categorias mais usadas nos últimos 60 dias (depois "mais…"), conta = última usada (cookie), data = hoje (editável), descrição opcional. Salvar com 1 toque.
 
+## Lançamento por voz
+
+Público principal: o pai do usuário (idoso, pouca familiaridade com digitação), que registra pagamentos e recebimentos falando. Custo zero: Web Speech API do navegador (`SpeechRecognition`/`webkitSpeechRecognition`, `lang: 'pt-BR'`, resultados parciais exibidos) e `speechSynthesis` para a confirmação falada. Requer HTTPS e permissão de microfone. No Chrome o áudio é processado por servidores do Google.
+
+**UI:** na tela inicial (`/w/[id]`), acima do dashboard, botão circular de microfone (~120px, cor de destaque, sombra, rótulo "Toque e fale"); pulsa enquanto escuta e mostra a transcrição parcial em fonte grande. Também acessível pelo **+** da barra inferior. Sem suporte no navegador: botão mostra "Use o Chrome para falar" e abre o lançamento rápido.
+
+**Fluxo:** fala → `interpretarFala` → tela de confirmação em tela cheia (valor grande com sinal e cor, descrição, data, conta, categoria) com botões grandes **"Está certo"** (salva via `criarLancamento`) e **"Falar de novo"**, e link "Corrigir" (abre lançamento rápido preenchido). Após salvar, fala "Anotado: <valor por extenso> <descrição>". Sem valor reconhecido: fala e mostra "Não entendi o valor, pode repetir?".
+
+**Interpretador** (função pura `interpretarFala(texto: string, hoje: string)`):
+- Valor: dígitos com milhar/decimal BR ("1.500,50"), "R$ 200", "200 reais", "5 mil", "5 mil e 500", "200 reais e 50 centavos", números por extenso até milhares ("duzentos", "cinco mil e quinhentos").
+- Tipo: entrada se contém "recebi", "recebimento", "me pagou", "entrou", "recebido"; senão saída.
+- Data: "ontem", "anteontem", "dia N" (mês atual; se N > hoje, mês anterior); padrão hoje.
+- Descrição: texto restante sem o valor, sem palavras de comando ("paguei", "pagamento de", "recebi") e sem a expressão de data; primeira letra maiúscula; vazia → "Lançamento por voz".
+- Categoria: `aplicarRegras` (Task 6) sobre a descrição; conta: última usada (cookie) ou primeira conta do workspace.
+
+**Conta do pai:** usuário próprio (criado com `criar-usuario`), workspace próprio; o usuário principal é adicionado como `membro` (papel novo, mesmas permissões que `dono` na v1) via script `adicionar-membro` (sem tela de convites na v1).
+
 ## Orientador financeiro por regras
 
 Sem IA, custo zero. Dois componentes:
@@ -160,7 +177,7 @@ Parsers, money, id-externo e regras são funções puras sem dependência de ban
 
 ## Testes
 
-- Vitest (TDD): parse-ofx (fixtures anonimizadas estilo Itaú, Nubank, Inter), parse-csv (`;`, `1.234,56`, `dd/mm/aaaa`), money, id-externo, aplicar-regras, calcularMeta, cada regra do orientador, carregamento/validação do frontmatter da biblioteca (toda `dica` referenciada por regra existe).
+- Vitest (TDD): parse-ofx (fixtures anonimizadas estilo Itaú, Nubank, Inter), parse-csv (`;`, `1.234,56`, `dd/mm/aaaa`), money, id-externo, aplicar-regras, calcularMeta, interpretarFala (frases reais de exemplo), cada regra do orientador, carregamento/validação do frontmatter da biblioteca (toda `dica` referenciada por regra existe).
 - Teste de isolamento RLS (contra a branch `dev` do Neon): dois usuários; B não lê nem grava dados do workspace de A; consulta sem `comUsuario` não vê nenhuma linha.
 - Playwright: (1) demo → dashboard → troca para Empresa; (2) importar OFX → prévia → confirmar → dashboard → desfazer.
 - GitHub Actions: lint, typecheck, Vitest em todo push.
@@ -176,7 +193,7 @@ Repositório público no GitHub; README como estudo de caso (problema, decisões
 | 1 | Setup, esquema + RLS + teste de isolamento, auth, workspace, CRUD de lançamentos/contas, primeiro deploy |
 | 2 | Parsers OFX/CSV (TDD), fluxo de importação com prévia/desfazer, regras |
 | 3 | Funções SQL + gráficos, orçamento |
-| 4 | Edições, metas, PWA + lançamento rápido |
+| 4 | Edições, metas, PWA + lançamento rápido, lançamento por voz |
 | 5 | Orientador (regras + biblioteca), publicação pessoal |
 | 6 | Demo (seed + limpeza), Playwright, README/GIF, publicação portfólio |
 
