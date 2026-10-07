@@ -29,6 +29,13 @@
       "when": 1791331487373,
       "tag": "0003_grants_app_user",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791408166118,
+      "tag": "0004_fks_compostas_workspace",
+      "breakpoints": true
     }
   ]
 }
