@@ -1,5 +1,70 @@
 {
   "app": {
     "nome": "Dashboard Financeiro"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "lancamentos": "Lançamentos",
+    "importar": "Importar",
+    "orcamento": "Orçamento",
+    "config": "Config",
+    "principal": "Navegação principal"
+  },
+  "comum": {
+    "emBreve": "Em breve",
+    "emBreveTexto": "Esta área ainda está em construção.",
+    "sair": "Sair",
+    "erroGenerico": "Algo deu errado. Tente novamente."
+  },
+  "validacao": {
+    "emailInvalido": "Informe um e-mail válido.",
+    "senhaObrigatoria": "Informe a senha.",
+    "senhaCurta": "A senha precisa ter pelo menos 8 caracteres.",
+    "senhaLonga": "A senha pode ter no máximo 128 caracteres.",
+    "nomeCurto": "O nome precisa ter pelo menos 2 caracteres.",
+    "nomeLongo": "O nome pode ter no máximo 60 caracteres.",
+    "tipoInvalido": "Escolha Pessoal ou Empresa."
+  },
+  "login": {
+    "titulo": "Entrar",
+    "descricao": "Acesse sua conta para ver suas finanças.",
+    "email": "E-mail",
+    "senha": "Senha",
+    "entrar": "Entrar",
+    "entrando": "Entrando…",
+    "semConta": "Ainda não tem conta?",
+    "criarConta": "Criar conta",
+    "erroCredenciais": "E-mail ou senha incorretos."
+  },
+  "cadastro": {
+    "titulo": "Criar conta",
+    "descricao": "Preencha os dados para começar.",
+    "nome": "Nome",
+    "email": "E-mail",
+    "senha": "Senha",
+    "senhaDica": "Mínimo de 8 caracteres.",
+    "criar": "Criar conta",
+    "criando": "Criando…",
+    "jaTemConta": "Já tem conta?",
+    "entrar": "Entrar",
+    "erroEmailExiste": "Já existe uma conta com este e-mail."
+  },
+  "novoWorkspace": {
+    "titulo": "Novo workspace",
+    "descricao": "Um workspace reúne contas, lançamentos e orçamento de um contexto: sua vida pessoal ou uma empresa.",
+    "nome": "Nome",
+    "nomePlaceholder": "Ex.: Casa, Padaria Bom Pão",
+    "tipo": "Tipo",
+    "criar": "Criar workspace",
+    "criando": "Criando…"
+  },
+  "workspace": {
+    "tipo": {
+      "pessoal": "Pessoal",
+      "empresa": "Empresa"
+    },
+    "seletor": "Workspace",
+    "novo": "Novo workspace",
+    "bemVindo": "Workspace {nome}"
   }
 }
