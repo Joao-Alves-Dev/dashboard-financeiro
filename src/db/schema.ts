@@ -128,6 +128,8 @@ export const lancamentos = pgTable(
     status: text('status').notNull().default('efetivado'),
     idExterno: text('id_externo'),
     importacaoId: uuid('importacao_id'),
+    // Desempate na ordenação da listagem (data desc, criado_em desc).
+    criadoEm: timestamp('criado_em', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     check('lancamentos_status_check', sql`${t.status} in ('efetivado', 'pendente')`),

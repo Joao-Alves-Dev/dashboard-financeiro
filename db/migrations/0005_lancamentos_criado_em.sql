@@ -1,0 +1,1 @@
+ALTER TABLE "lancamentos" ADD COLUMN "criado_em" timestamp with time zone DEFAULT now() NOT NULL;
