@@ -182,6 +182,7 @@ aplicarRegras<T extends { descricao: string }>(linhas: T[], regras: Regra[]): (T
 
 - [ ] **Step 1: Teste que falha** (`schemas.test.ts`): `{ valor: '1.234,56', tipo: 'saida' }` → `valorCentavos: -123456`; rejeita data inválida e descrição vazia.
 - [ ] **Step 2:** FAIL → implementar schemas → PASS.
+- [ ] **Step 2b (integridade entre workspaces):** migração trocando as FKs simples por FKs compostas, para que um lançamento/regra/orçamento/importação só possa referenciar conta/categoria do **mesmo** workspace: `unique (workspace_id, id)` em `contas` e `categorias`; FKs `(workspace_id, conta_id) references contas(workspace_id, id)` e `(workspace_id, categoria_id) references categorias(workspace_id, id)` (manter `on delete` atuais; para `categoria_id` nulo use `match simple`). Teste de integração: A tentando inserir lançamento no próprio workspace com `conta_id` de B → erro de FK.
 - [ ] **Step 3:** Queries, actions e páginas; filtros nos `searchParams`; no tipo Empresa o form exibe `status`.
 - [ ] **Step 4: Verificar:** CRUD, filtros, categorização em lote; excluir conta com lançamentos pede confirmação.
 - [ ] **Step 5:** commit `feat: CRUD de lançamentos e configurações`.
