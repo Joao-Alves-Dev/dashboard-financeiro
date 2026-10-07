@@ -43,6 +43,13 @@
       "when": 1791408452524,
       "tag": "0005_lancamentos_criado_em",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791414682297,
+      "tag": "0006_funcoes_importacao",
+      "breakpoints": true
     }
   ]
 }
