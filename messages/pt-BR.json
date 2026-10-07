@@ -240,5 +240,97 @@
     "contaExigeConfirmacao": "Esta conta tem {qtd, plural, one {# lançamento} other {# lançamentos}}. Confirme a exclusão para apagá-los junto.",
     "categoriaNaoEncontrada": "Categoria não encontrada.",
     "regraNaoEncontrada": "Regra não encontrada."
+  },
+  "importacao": {
+    "titulo": "Importar extrato",
+    "descricao": "Envie o extrato do banco (.ofx ou .csv, até 2 MB). Você confere tudo antes de gravar.",
+    "semConta": "Nenhuma conta ainda — crie a primeira",
+    "semContaDescricao": "A importação grava os lançamentos em uma conta. Crie uma para começar.",
+    "criarConta": "Criar conta",
+    "passos": {
+      "arquivo": "Arquivo",
+      "mapeamento": "Colunas",
+      "previa": "Conferir",
+      "resultado": "Pronto"
+    },
+    "conta": "Conta",
+    "arquivo": "Arquivo do extrato",
+    "arquivoDica": "OFX ou CSV, até 2 MB.",
+    "continuar": "Continuar",
+    "analisando": "Analisando…",
+    "voltar": "Voltar",
+    "mapeamento": {
+      "titulo": "Quais colunas usar?",
+      "descricao": "Indique quais colunas do CSV trazem a data, a descrição e o valor. Isso fica salvo na conta para a próxima vez.",
+      "salvo": "Usando o mapeamento salvo nesta conta.",
+      "data": "Coluna da data",
+      "descricaoCol": "Coluna da descrição",
+      "valor": "Coluna do valor",
+      "escolha": "Escolher coluna",
+      "inverter": "Inverter o sinal (fatura de cartão)",
+      "inverterDica": "Marque se as compras aparecem como valores positivos no arquivo.",
+      "gerarPrevia": "Ver prévia"
+    },
+    "previa": {
+      "titulo": "Conferir antes de importar",
+      "novas": "{n, plural, =0 {nenhuma nova} one {# nova} other {# novas}}",
+      "duplicadas": "{n, plural, =0 {nenhuma duplicada} one {# duplicada} other {# duplicadas}}",
+      "comErro": "{n, plural, =0 {nenhuma com erro} one {# com erro} other {# com erro}}",
+      "soma": "Soma das selecionadas",
+      "selecionadas": "{n, plural, one {# selecionada} other {# selecionadas}}",
+      "selecionarTodas": "Selecionar todas as novas",
+      "mostrarMais": "Mostrar mais ({n} restantes)",
+      "selecionar": "Importar esta linha",
+      "duplicadaBadge": "Já existe",
+      "duplicadaDica": "Já importada nesta conta; não será gravada de novo.",
+      "categoria": "Categoria",
+      "categoriaDe": "Categoria de {descricao}",
+      "semCategoria": "Sem categoria",
+      "colunas": {
+        "data": "Data",
+        "descricao": "Descrição",
+        "categoria": "Categoria",
+        "valor": "Valor"
+      },
+      "errosTitulo": "Linhas ignoradas por erro",
+      "errosDescricao": "Estas linhas não serão importadas.",
+      "errosLinha": "Linha {linha}: {motivo}",
+      "nadaNovo": "Todas as linhas deste arquivo já existem nesta conta. Nada a importar.",
+      "importar": "{n, plural, =0 {Importar} one {Importar # lançamento} other {Importar # lançamentos}}",
+      "importando": "Importando…",
+      "cancelar": "Cancelar"
+    },
+    "resultado": {
+      "titulo": "Importação concluída",
+      "resumo": "{inseridos, plural, =0 {Nenhum importado} one {# importado} other {# importados}}, {ignorados, plural, =0 {nenhum já existia} one {# já existia} other {# já existiam}}",
+      "verLancamentos": "Ver lançamentos",
+      "outra": "Importar outro arquivo"
+    },
+    "historico": {
+      "titulo": "Importações anteriores",
+      "vazio": "Nenhuma importação ainda.",
+      "linha": "{arquivo} · {conta}",
+      "detalhe": "{qtd, plural, one {# lançamento} other {# lançamentos}} · {data}",
+      "desfazer": "Desfazer",
+      "desfazerTitulo": "Desfazer importação?",
+      "desfazerTexto": "Os {qtd, plural, one {# lançamento importado} other {# lançamentos importados}} de \"{arquivo}\" serão apagados, inclusive se você os editou depois. Esta ação não pode ser desfeita.",
+      "desfazerConfirmar": "Desfazer importação",
+      "desfazendo": "Desfazendo…"
+    },
+    "erros": {
+      "extensao": "Envie um arquivo .ofx ou .csv.",
+      "tamanho": "O arquivo passa de 2 MB.",
+      "arquivoVazio": "O arquivo está vazio.",
+      "semArquivo": "Escolha um arquivo para importar.",
+      "naoOfx": "O arquivo tem extensão .ofx, mas o conteúdo não é um OFX válido.",
+      "semTransacoes": "Não encontrei transações neste arquivo.",
+      "colunaInexistente": "A coluna \"{coluna}\" não existe neste arquivo.",
+      "muitasLinhas": "O arquivo tem mais de {max} transações. Divida-o em partes menores.",
+      "contaNaoEncontrada": "Conta não encontrada neste workspace.",
+      "mapeamentoInvalido": "Escolha as colunas de data, descrição e valor.",
+      "dadosInvalidos": "Os dados da importação são inválidos. Gere a prévia novamente.",
+      "importacaoNaoEncontrada": "Importação não encontrada.",
+      "contaObrigatoria": "Escolha a conta."
+    }
   }
 }

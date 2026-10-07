@@ -19,12 +19,14 @@ type Props = {
   titulo: string
   texto: ReactNode
   rotuloConfirmar: string
+  /** Texto do botão enquanto executa (padrão: "Excluindo…"). */
+  rotuloPendente?: string
   /** Executa a ação; devolve mensagem de erro ou null em sucesso (o diálogo fecha). */
   aoConfirmar: () => Promise<string | null>
 }
 
 /** Confirmação destrutiva: mostra o erro da action sem fechar. */
-export function ConfirmarDialogo({ aberto, aoMudar, titulo, texto, rotuloConfirmar, aoConfirmar }: Props) {
+export function ConfirmarDialogo({ aberto, aoMudar, titulo, texto, rotuloConfirmar, rotuloPendente, aoConfirmar }: Props) {
   const t = useTranslations('comum')
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
@@ -60,7 +62,7 @@ export function ConfirmarDialogo({ aberto, aoMudar, titulo, texto, rotuloConfirm
               })
             }
           >
-            {pendente ? t('excluindo') : rotuloConfirmar}
+            {pendente ? (rotuloPendente ?? t('excluindo')) : rotuloConfirmar}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
