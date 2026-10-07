@@ -20,7 +20,7 @@
 
 1. Criar conta no Neon (neon.com) e o projeto `financeiro-pessoal` (região mais próxima disponível, ex.: AWS São Paulo se houver) com uma branch `dev`. O projeto `financeiro-portfolio` só na Task 18.
 2. ~~Criar repositório público no GitHub~~ (feito).
-3. Preencher `.env.local` (nunca commitado): `DATABASE_URL` (connection string da branch `dev`, versão **pooled**), `BETTER_AUTH_SECRET` (gerar com `npx @better-auth/cli secret` ou 32+ bytes aleatórios), `BETTER_AUTH_URL=http://localhost:3000`, `NEXT_PUBLIC_EDICAO=pessoal`, `CRON_SECRET`.
+3. Preencher `.env.local` (nunca commitado; `scripts/criar-env-local.ps1` gera): `DATABASE_URL_UNPOOLED` (owner, conexão direta, só migrações) e `DATABASE_URL` (branch `dev`, **pooled**, role `app_user` sem BYPASSRLS, preenchida por `npm run db:criar-role-app` depois do `criar-env-local`; o owner `neondb_owner` tem BYPASSRLS no Neon e não pode ser usado pelo app), `BETTER_AUTH_SECRET` (gerar com `npx auth@latest secret` ou 32+ bytes aleatórios), `BETTER_AUTH_URL=http://localhost:3000`, `NEXT_PUBLIC_EDICAO=pessoal`, `CRON_SECRET`.
 
 Pasta do projeto: `D:\Portfolio\dashboard-financeiro` (mover a sessão para lá com `change_directory` antes da Task 1).
 
@@ -34,6 +34,7 @@ Pasta do projeto: `D:\Portfolio\dashboard-financeiro` (mover a sessão para lá 
 - Server Actions retornam `ActionResult<T> = { ok: true; data: T } | { ok: false; erro: string; campos?: Record<string, string> }`.
 - Toda leitura/escrita de tabela de domínio passa por `comUsuario(userId, fn)` (Task 3). Acesso fora dele só nas tabelas do Better Auth, em `src/app/api/demo/limpar/route.ts` e nos helpers de teste.
 - Banco só no servidor (`import 'server-only'` em `src/db/*`).
+- `DATABASE_URL` (app e testes) = role `app_user` pooled, sem BYPASSRLS; `DATABASE_URL_UNPOOLED` = owner, só para `drizzle-kit`. A Vercel recebe sempre a URL do `app_user`, nunca a do owner.
 - Nomes de domínio em português (tabelas, colunas, funções), conforme o spec.
 
 ## Review Focus
@@ -80,7 +81,7 @@ expect(formatarBRL(-123456).replace(/\s/g, ' ')).toBe('-R$ 1.234,56')
 
 ### Task 3: Banco Neon, esquema, RLS e teste de isolamento
 
-**Files:** Create `drizzle.config.ts`, `src/db/{cliente.ts,schema.ts,auth-schema.ts,com-usuario.ts}`, `db/migrations/*` (gerados), migrações customizadas `db/migrations/*_rls.sql`, `*_funcoes_workspace.sql`; Test `tests/integracao/rls.test.ts`, helper `tests/integracao/usuarios.ts` (insere/apaga linhas em `user` diretamente). Scripts `db:generate` (`drizzle-kit generate`), `db:migrate` (`drizzle-kit migrate`). Deps: `drizzle-orm @neondatabase/serverless ws better-auth server-only`; dev: `drizzle-kit @types/ws dotenv`. **Remover** `@supabase/ssr @supabase/supabase-js` (instalados na Task 1) e trocar as variáveis do `.env.example` pelas da seção de pré-requisitos.
+**Files:** Create `drizzle.config.ts`, `scripts/criar-role-app.ts` (script `db:criar-role-app`: cria/rotaciona `app_user` e reescreve só `DATABASE_URL` no `.env.local`, ou em `--arquivo <path>`), `src/db/{cliente.ts,schema.ts,auth-schema.ts,com-usuario.ts}`, `db/migrations/*` (gerados), migrações customizadas `db/migrations/*_rls.sql`, `*_funcoes_workspace.sql`, `*_grants_app_user.sql` (grants e default privileges para `app_user`; a role precisa existir antes de `db:migrate`); Test `tests/integracao/rls.test.ts`, helper `tests/integracao/usuarios.ts` (insere/apaga linhas em `user` diretamente). Scripts `db:generate` (`drizzle-kit generate`), `db:migrate` (`drizzle-kit migrate`). Deps: `drizzle-orm @neondatabase/serverless ws better-auth server-only`; dev: `drizzle-kit @types/ws dotenv`. **Remover** `@supabase/ssr @supabase/supabase-js` (instalados na Task 1) e trocar as variáveis do `.env.example` pelas da seção de pré-requisitos.
 
 **Interfaces — Produces:**
 ```ts
@@ -91,7 +92,7 @@ export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 export async function comUsuario<T>(userId: string, fn: (tx: Tx) => Promise<T>): Promise<T>
 // abre db.transaction, executa sql`select set_config('app.usuario_id', ${userId}, true)`, depois fn(tx)
 ```
-SQL: `usuario_atual() returns text`; `is_member(ws uuid) returns boolean`; `criar_workspace(p_nome text, p_tipo text) returns uuid` (insere workspace com `criado_por = usuario_atual()`, membro `dono` e categorias padrão do tipo; erro se `usuario_atual()` for nulo). Tabelas do Better Auth geradas com `npx @better-auth/cli generate` para `src/db/auth-schema.ts` (conferir comando na doc atual).
+SQL: `usuario_atual() returns text`; `is_member(ws uuid) returns boolean`; `criar_workspace(p_nome text, p_tipo text) returns uuid` (insere workspace com `criado_por = usuario_atual()`, membro `dono` e categorias padrão do tipo; erro se `usuario_atual()` for nulo). Tabelas do Better Auth geradas com `npx auth@latest generate --config src/lib/auth.ts --output src/db/auth-schema.ts -y` para `src/db/auth-schema.ts` (o CLI exige remover `import 'server-only'` de `auth.ts`/`cliente.ts` temporariamente).
 
 Categorias padrão — pessoal: Salário, Outras receitas, Moradia, Alimentação, Transporte, Saúde, Lazer, Educação, Outros. Empresa: Vendas, Serviços, Outras receitas, Fornecedores, Folha, Impostos, Aluguel, Marketing, Outros.
 
@@ -102,6 +103,7 @@ Categorias padrão — pessoal: Salário, Outras receitas, Moradia, Alimentaçã
   - `comUsuario(B, ...)` select em `workspaces` por `wsA` → `[]`.
   - `db.select().from(lancamentos)` **sem** `comUsuario` → `[]` (falha fechado).
   - A vê 9 categorias padrão.
+  - a conexão do app tem `rolbypassrls = false` em `pg_roles` (falha se alguém usar o owner).
 - [ ] **Step 2:** Configurar `drizzle.config.ts` (`dialect: 'postgresql'`, `schema: './src/db/*schema.ts'`, `out: './db/migrations'`, url de `DATABASE_URL` via dotenv `.env.local`); rodar teste → FAIL (tabelas inexistentes).
 - [ ] **Step 3:** Schema Drizzle das tabelas do spec (domínio + auth). `npm run db:generate`. Migrações customizadas: `usuario_atual`, `is_member` (`security definer`, `stable`, `set search_path = public`), `enable` + `force row level security` em todas as tabelas de domínio, policies `for all using (is_member(workspace_id)) with check (is_member(workspace_id))`; `workspaces`: select/update por `is_member(id)`, insert só via `criar_workspace` (`security definer`). Índices: `lancamentos(workspace_id, data)`, unique `(conta_id, id_externo)`.
 - [ ] **Step 4:** `npm run db:migrate` (branch `dev`); `npm run test:integracao` → PASS.
@@ -333,7 +335,7 @@ Valores monetários nos textos via `formatarBRL`. `chave` identifica a instânci
 
 **Files:** Create `scripts/criar-usuario.ts` (script `criar-usuario`: lê e-mail/nome/senha de prompts no terminal, cria o usuário pela API do servidor do Better Auth ignorando o bloqueio de cadastro, conforme doc atual), `scripts/adicionar-membro.ts` (script `adicionar-membro`: pede e-mail do dono do workspace, nome do workspace e e-mail do novo membro; insere em `workspace_members` com papel `membro`; erro claro se algum não existir; idempotente). Modify `src/lib/auth.ts` (cadastro por e-mail desabilitado quando `!recursos(obterEdicao()).cadastroAberto`); migração `papel_membro` (check de `papel` aceita `dono` e `membro`). Test `tests/integracao/membro.test.ts`: membro vê e grava no workspace do dono; dono não vê workspaces do membro.
 
-- [ ] **Step 1:** `npm run db:migrate` na branch `main` do Neon `financeiro-pessoal`. Projeto Vercel `financeiro-pessoal` ligado ao repositório, env: `DATABASE_URL` (branch `main`, pooled), `BETTER_AUTH_SECRET` (novo, diferente do dev), `BETTER_AUTH_URL` (URL da Vercel), `NEXT_PUBLIC_EDICAO=pessoal` (preenchidas pelo usuário no painel).
+- [ ] **Step 1:** Em um arquivo de env de produção (fora do git) com `DATABASE_URL_UNPOOLED` do owner da branch `main`: `npm run db:criar-role-app -- --arquivo <arquivo>` (gera `app_user` e a `DATABASE_URL` dele), depois `npm run db:migrate` na branch `main` do Neon `financeiro-pessoal`. A Vercel recebe a `DATABASE_URL` do `app_user`, nunca a do owner. Projeto Vercel `financeiro-pessoal` ligado ao repositório, env: `DATABASE_URL` (branch `main`, pooled), `BETTER_AUTH_SECRET` (novo, diferente do dev), `BETTER_AUTH_URL` (URL da Vercel), `NEXT_PUBLIC_EDICAO=pessoal` (preenchidas pelo usuário no painel).
 - [ ] **Step 2:** Usuário roda `npm run criar-usuario` apontando para a branch `main` duas vezes: para si e para o pai (digita as senhas no terminal; Claude não digita senhas). Cada um faz login e cria seu workspace pessoal; depois o usuário roda `npm run adicionar-membro` para entrar como membro do workspace do pai.
 - [ ] **Step 3: Verificar:** tentativa de cadastro com outro e-mail falha; login funciona no celular; app instala na tela inicial; lançamento rápido grava; no celular do pai, lançamento por voz grava e aparece no seletor de workspace do usuário como "Pai".
 - [ ] **Step 4:** A URL pessoal não é publicada no README (fica só com o usuário). Commit se houver alterações.
@@ -342,7 +344,7 @@ Valores monetários nos textos via `formatarBRL`. `chave` identifica a instânci
 
 **Files:** Create migração `demo`; `src/features/demo/{actions.ts,banner-demo.tsx}`; `src/app/api/demo/limpar/route.ts`; `vercel.json` (cron `0 6 * * *`); `src/app/page.tsx` (landing).
 
-Pré-requisito: usuário cria o projeto Neon `financeiro-portfolio`; migrações aplicadas na branch `main`; projeto Vercel `financeiro-portfolio` com `NEXT_PUBLIC_EDICAO=portfolio`, `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CRON_SECRET`.
+Pré-requisito: usuário cria o projeto Neon `financeiro-portfolio`; `npm run db:criar-role-app -- --arquivo <env do portfólio>` antes de `db:migrate`; migrações aplicadas na branch `main`; a Vercel recebe a `DATABASE_URL` do `app_user` (nunca a do owner); projeto Vercel `financeiro-portfolio` com `NEXT_PUBLIC_EDICAO=portfolio`, `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CRON_SECRET`.
 
 **Interfaces — Produces:** SQL `semear_demo() returns uuid` — para `usuario_atual()` cria "Família Silva" (pessoal) e "Padaria Bom Pão" (empresa), 2 contas cada, 12 meses retroativos de lançamentos determinísticos (salário/vendas, contas fixas, variáveis), orçamentos do mês atual, 4 regras de categoria, 2 metas com aportes (uma "Reserva de emergência" atrasada) e, na Padaria, 6 pendentes nos próximos 30 dias; retorna id do workspace pessoal. Action `entrarComoDemo(): Promise<never>` (redirect).
 

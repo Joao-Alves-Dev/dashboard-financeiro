@@ -57,7 +57,9 @@ Ambientes Neon: cada projeto tem branch `main` (produção) e branch `dev` (dese
 - O servidor identifica o usuário pela sessão do Better Auth e executa cada operação de domínio dentro de `comUsuario(userId, fn)`: abre uma transação, executa `select set_config('app.usuario_id', $1, true)` (válido só naquela transação) e chama `fn(tx)`.
 - Função SQL `usuario_atual()` = `nullif(current_setting('app.usuario_id', true), '')`.
 - `is_member(ws uuid)` (security definer, `stable`) verifica `workspace_members` com `usuario_atual()`.
-- Todas as tabelas de domínio: `enable row level security` **e** `force row level security` (a role da aplicação é dona das tabelas; sem `force`, o dono ignoraria as políticas). Policies `for all using (is_member(workspace_id)) with check (is_member(workspace_id))`.
+- **Roles:** no Neon, a role padrão (`neondb_owner`) tem `BYPASSRLS` (atributo que ignora RLS mesmo com `force`). Por isso o app NÃO usa essa role: conecta como `app_user` (`nobypassrls`, sem superuser, sem `neon_superuser`), criada por `npm run db:criar-role-app` (`scripts/criar-role-app.ts`); `DATABASE_URL` = `app_user` pooled. O owner fica só para migrações (`DATABASE_URL_UNPOOLED`). Um teste de integração falha se a conexão do app tiver `BYPASSRLS`.
+- Funções `security definer` (`is_member`, `criar_workspace`, `semear_demo`...) rodam como o owner e, portanto, NÃO sofrem RLS: devem validar tudo sozinhas (`usuario_atual()` não nulo, parâmetros válidos, `set search_path = public`). `execute` é revogado de PUBLIC e concedido só a `app_user`.
+- Todas as tabelas de domínio: `enable row level security` **e** `force row level security` (defesa extra; a proteção real é a role `app_user` sem BYPASSRLS). Policies `for all using (is_member(workspace_id)) with check (is_member(workspace_id))`.
 - Sem `app.usuario_id` definido, nenhuma linha de domínio é visível. Isso falha fechado: esquecer `comUsuario` resulta em dados vazios, nunca em vazamento.
 - Tabelas do Better Auth não têm RLS; só o código do Better Auth e a rotina de limpeza da demo as acessam.
 
