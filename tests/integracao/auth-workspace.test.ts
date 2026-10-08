@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { eq, inArray } from 'drizzle-orm'
 import { db } from '@/db/cliente'
 import { user } from '@/db/auth-schema'
-import { auth } from '@/lib/auth'
+import { criarAuthInterno } from '@/lib/auth'
 import {
   criarWorkspaceParaUsuario,
   listarWorkspacesDoUsuario,
@@ -18,7 +18,7 @@ let idB: string
 
 async function cadastrar(email: string): Promise<string> {
   const senhaTeste = randomBytes(12).toString('hex')
-  const r = await auth.api.signUpEmail({ body: { name: `Teste ${email}`, email, password: senhaTeste } })
+  const r = await criarAuthInterno().api.signUpEmail({ body: { name: `Teste ${email}`, email, password: senhaTeste } })
   return r.user.id
 }
 

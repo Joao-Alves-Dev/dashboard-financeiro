@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { entrar } from '@/app/login/actions'
 
-export function FormLogin() {
+export function FormLogin({ cadastroAberto }: { cadastroAberto: boolean }) {
   const t = useTranslations('login')
   const [estado, acao, pendente] = useActionState(entrar, null)
   const [valores, setValores] = useState<Record<string, string>>({})
@@ -43,10 +43,12 @@ export function FormLogin() {
           <Button type="submit" disabled={pendente}>
             {pendente ? t('entrando') : t('entrar')}
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            {t('semConta')}{' '}
-            <Link href="/cadastro" className="underline underline-offset-4">{t('criarConta')}</Link>
-          </p>
+          {cadastroAberto && (
+            <p className="text-center text-sm text-muted-foreground">
+              {t('semConta')}{' '}
+              <Link href="/cadastro" className="underline underline-offset-4">{t('criarConta')}</Link>
+            </p>
+          )}
         </form>
       </CardContent>
     </Card>

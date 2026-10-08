@@ -6,7 +6,9 @@ import { getTranslations } from 'next-intl/server'
 import { auth } from '@/lib/auth'
 import type { ActionResult } from '@/lib/action-result'
 import { errosPorCampo } from '@/lib/erros-zod'
+import { obterEdicao } from '@/lib/edicao'
 import { cadastroSchema } from '@/features/auth/schemas'
+import { cadastrarUsuario } from '@/features/auth/servico'
 
 export async function cadastrar(
   _anterior: ActionResult<null> | null,
@@ -22,14 +24,14 @@ export async function cadastrar(
     return { ok: false, erro: t('comum.erroGenerico'), campos: errosPorCampo(parsed.error, (c) => t(c)) }
   }
 
-  try {
-    await auth.api.signUpEmail({
-      body: { name: parsed.data.nome, email: parsed.data.email, password: parsed.data.senha },
-      headers: await headers(),
-    })
-  } catch (e) {
-    const codigo = (e as { body?: { code?: string } }).body?.code ?? ''
-    if (codigo.startsWith('USER_ALREADY_EXISTS')) {
+  const r = await cadastrarUsuario(parsed.data, {
+    edicao: obterEdicao(),
+    auth,
+    headers: await headers(),
+  })
+  if (!r.ok) {
+    if (r.motivo === 'cadastro_fechado') return { ok: false, erro: t('cadastro.erroFechado') }
+    if (r.motivo === 'email_existe') {
       return { ok: false, erro: t('cadastro.erroEmailExiste'), campos: { email: t('cadastro.erroEmailExiste') } }
     }
     return { ok: false, erro: t('comum.erroGenerico') }

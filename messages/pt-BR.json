@@ -82,7 +82,8 @@
     "criando": "Criando…",
     "jaTemConta": "Já tem conta?",
     "entrar": "Entrar",
-    "erroEmailExiste": "Já existe uma conta com este e-mail."
+    "erroEmailExiste": "Já existe uma conta com este e-mail.",
+    "erroFechado": "O cadastro está fechado nesta instalação."
   },
   "novoWorkspace": {
     "titulo": "Novo workspace",
