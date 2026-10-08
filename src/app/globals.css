@@ -81,6 +81,19 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Dataviz: paleta categórica validada (scripts/validate_palette.js) contra a superfície do card. */
+  --serie-1: #2a78d6;
+  --serie-2: #eb6834;
+  --serie-3: #1baf7a;
+  --serie-4: #eda100;
+  --serie-5: #e87ba4;
+  --serie-6: #008300;
+  --serie-7: #4a3aa7;
+  --serie-8: #e34948;
+  --viz-grid: #e1e0d9;
+  --viz-eixo: #c3c2b7;
+  --status-bom: #0ca30c;
+  --status-critico: #d03b3b;
 }
 
 .dark {
@@ -115,6 +128,19 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* Dataviz: paleta categórica validada (scripts/validate_palette.js) contra a superfície do card. */
+  --serie-1: #3987e5;
+  --serie-2: #d95926;
+  --serie-3: #199e70;
+  --serie-4: #c98500;
+  --serie-5: #d55181;
+  --serie-6: #008300;
+  --serie-7: #9085e9;
+  --serie-8: #e66767;
+  --viz-grid: #2c2c2a;
+  --viz-eixo: #383835;
+  --status-bom: #0ca30c;
+  --status-critico: #d03b3b;
 }
 
 @layer base {

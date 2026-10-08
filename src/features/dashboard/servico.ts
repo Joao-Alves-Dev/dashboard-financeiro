@@ -217,3 +217,11 @@ export async function contasAPagarReceberDoUsuario(userId: string, ws: string, h
     }
   })
 }
+
+/** Há algum lançamento (qualquer status) no workspace? Decide entre o estado vazio e o dashboard. */
+export async function existeLancamentoDoUsuario(userId: string, ws: string): Promise<boolean> {
+  const l = await comUsuario(userId, (tx) =>
+    tx.select({ id: lancamentos.id }).from(lancamentos).where(eq(lancamentos.workspaceId, ws)).limit(1),
+  )
+  return l.length > 0
+}

@@ -332,5 +332,75 @@
       "importacaoNaoEncontrada": "Importação não encontrada.",
       "contaObrigatoria": "Escolha a conta."
     }
+  },
+  "dashboard": {
+    "titulo": "Dashboard",
+    "mesReferencia": "Mês de referência: {mes}",
+    "kpis": {
+      "grupo": "Indicadores do mês",
+      "saldoAtual": "Saldo atual",
+      "saldoAtualAjuda": "Soma dos saldos iniciais e dos lançamentos efetivados",
+      "entradasMes": "Entradas do mês",
+      "saidasMes": "Saídas do mês",
+      "resultadoMes": "Resultado do mês",
+      "variacao": "Variação de {pct} em relação ao mês anterior",
+      "vsAnterior": "{pct} vs. mês anterior",
+      "semComparacao": "Sem mês anterior para comparar",
+      "igual": "Igual ao mês anterior"
+    },
+    "grafico": {
+      "titulo": "Entradas e saídas",
+      "descricao": "Últimos 12 meses, só lançamentos efetivados",
+      "entradas": "Entradas",
+      "saidas": "Saídas",
+      "resultado": "Resultado",
+      "resumoAcessivel": "Gráfico de barras com entradas e saídas mensais dos últimos 12 meses. Total de entradas {entradas}; total de saídas {saidas}.",
+      "verTabela": "Ver dados em tabela",
+      "mes": "Mês",
+      "vazio": "Sem movimentação efetivada nos últimos 12 meses."
+    },
+    "categorias": {
+      "titulo": "Gastos por categoria",
+      "descricao": "Saídas efetivadas em {mes}",
+      "outras": "Outras",
+      "outrasQtd": "{n, plural, one {# categoria} other {# categorias}}",
+      "vazio": "Nenhuma saída efetivada neste mês.",
+      "participacao": "{pct} do total"
+    },
+    "orcamento": {
+      "titulo": "Orçamento do mês",
+      "descricao": "Realizado × orçado em {mes}",
+      "valores": "{realizado} de {orcado}",
+      "acima": "Acima do orçamento",
+      "valorTexto": "{pct}: {realizado} de {orcado}",
+      "vazioTitulo": "Nenhum orçamento definido para este mês",
+      "vazioTexto": "Defina quanto pretende gastar por categoria para acompanhar o realizado aqui.",
+      "definir": "Definir orçamento",
+      "editar": "Editar orçamento"
+    },
+    "recentes": {
+      "titulo": "Últimos lançamentos",
+      "verTodos": "Ver todos",
+      "vazio": "Nenhum lançamento ainda.",
+      "pendente": "Pendente",
+      "semCategoria": "Sem categoria"
+    },
+    "aPagarReceber": {
+      "titulo": "A pagar / A receber",
+      "descricao": "Pendentes dos próximos 30 dias",
+      "aPagar": "A pagar",
+      "aReceber": "A receber",
+      "qtd": "{n, plural, one {# lançamento} other {# lançamentos}}",
+      "proximos": "Próximos vencimentos",
+      "vazio": "Nada pendente nos próximos 30 dias.",
+      "verPendentes": "Ver lançamentos"
+    },
+    "vazio": {
+      "titulo": "Seu dashboard ainda está vazio",
+      "texto": "Importe um extrato ou registre o primeiro lançamento para ver saldo, gráficos e orçamento.",
+      "importar": "Importar extrato",
+      "lancar": "Registrar lançamento"
+    },
+    "carregando": "Carregando…"
   }
 }
