@@ -402,5 +402,47 @@
       "lancar": "Registrar lançamento"
     },
     "carregando": "Carregando…"
+  },
+  "orcamento": {
+    "titulo": "Orçamento",
+    "descricao": "Defina quanto pretende gastar por categoria e compare com o realizado.",
+    "navegacao": "Navegação de meses",
+    "mesAnterior": "Mês anterior",
+    "mesProximo": "Próximo mês",
+    "hoje": "Hoje",
+    "janela": "{de} a {ate}",
+    "seletorMes": "Mês exibido",
+    "categoria": "Categoria",
+    "orcado": "Orçado",
+    "realizado": "Realizado",
+    "campoRotulo": "Orçado de {categoria} em {mes}",
+    "placeholder": "—",
+    "salvando": "Salvando…",
+    "salvo": "Salvo",
+    "erroSalvar": "Não foi possível salvar",
+    "realizadoValor": "Realizado: {valor}",
+    "acima": "Acima do orçado",
+    "acimaPor": "Acima do orçado em {valor}",
+    "dentro": "Dentro do orçado",
+    "semOrcamento": "Sem orçamento",
+    "copiar": "Copiar do mês anterior",
+    "copiarCurto": "Copiar anterior",
+    "copiarEm": "Copiar do mês anterior para {mes}",
+    "copiando": "Copiando…",
+    "copiados": "{n, plural, =0 {Nada novo para copiar: o mês anterior não tem orçamentos ou eles já existem em {mes}.} one {# orçamento copiado para {mes}.} other {# orçamentos copiados para {mes}.}}",
+    "totais": "Totais do mês",
+    "totalOrcado": "Orçado total",
+    "totalRealizado": "Realizado total",
+    "vazioTitulo": "Nenhuma categoria de despesa",
+    "vazioTexto": "O orçamento é definido por categoria de despesa. Crie ao menos uma em Configurações.",
+    "irConfig": "Ir para Configurações",
+    "ajuda": "Deixe em branco para não ter orçamento; 0 significa não gastar nada nesta categoria.",
+    "erros": {
+      "mesInvalido": "Mês inválido.",
+      "valorInvalido": "Valor inválido. Use o formato 1.234,56.",
+      "valorNegativo": "O orçamento não pode ser negativo.",
+      "valorGrande": "Valor alto demais.",
+      "categoriaInvalida": "Escolha uma categoria de despesa deste workspace."
+    }
   }
 }
