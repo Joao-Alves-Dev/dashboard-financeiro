@@ -17,8 +17,8 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/integracao/**/*.test.ts'],
     passWithNoTests: true,
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    testTimeout: 120000, // muitas idas ao Neon (latência de rede); 30s estourava com a dev lenta
+    hookTimeout: 120000,
     fileParallelism: false,
   },
 })

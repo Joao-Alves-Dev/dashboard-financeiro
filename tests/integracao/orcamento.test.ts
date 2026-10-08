@@ -24,7 +24,7 @@ async function rejeitaComo(p: Promise<unknown>): Promise<ErroDominio | string | 
 }
 
 // Timeout folgado: a branch dev do Neon pode ter latência alta (várias idas ao banco por teste).
-describe('orçamento (serviço)', { timeout: 120_000 }, () => {
+describe('orçamento (serviço)', () => {
   let ids: string[] = []
   let A: string
   let B: string
