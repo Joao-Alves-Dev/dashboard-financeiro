@@ -1,6 +1,7 @@
 # Dashboard Financeiro — Implementation Plan
 
 > Revisão 2 (2026-10-03): Tasks 12-16 adicionadas (edições, metas, PWA, orientador, publicação pessoal); demo e E2E renumeradas para 17-18.
+> Revisão 5 (2026-10-08): Tasks 14b (favorecido) e 15b (exportação de lista por favorecido e período, tela e voz) adicionadas; a Task 15 passa a extrair `favorecido`.
 > Revisão 4 (2026-10-05): Task 15 (lançamento por voz) adicionada; orientador → 16, publicação pessoal → 17 (inclui conta do pai e membro), demo → 18, E2E → 19.
 > Revisão 3 (2026-10-05): Supabase → Neon + Better Auth + Drizzle. Tasks 3, 7, 16 e 17 reescritas; nas demais, "migração" = arquivo SQL em `db/migrations/` criado com `npx drizzle-kit generate --custom --name <nome>` e aplicado com `npm run db:migrate`; chamadas a funções SQL usam `tx.execute(sql\`select ...\`)` dentro de `comUsuario`.
 >
@@ -268,13 +269,24 @@ Actions: `criarMeta`, `editarMeta`, `excluirMeta`, `registrarAporte(ws, metaId, 
 - [ ] **Step 4b (pendências herdadas da Task 10):** (1) corrigir `--font-sans: var(--font-sans)` auto-referente em `src/app/globals.css` (a fonte do app cai em serifa): apontar para a variável da fonte carregada em `layout.tsx` (ex.: Geist) e confirmar no navegador; (2) tema escuro alcançável: aplicar a classe `.dark` a partir de `prefers-color-scheme` (e `theme-color` no manifest/viewport), sem toggle manual na v1; verificar gráficos e tiles nos dois temas.
 - [ ] **Step 5:** commit `feat: PWA e lançamento rápido`.
 
+### Task 14b: Favorecido (campo, filtro e sugestões)
+
+**Files:** Create migração `favorecido` (colunas `favorecido`, `favorecido_chave`, índice `(workspace_id, favorecido_chave, data)`; backfill: nenhum, colunas nulas); `src/features/favorecido/{normalizar.ts,normalizar.test.ts,servico.ts,queries.ts}`; Modify `src/db/schema.ts`, `src/features/lancamentos/{schemas.ts,servico.ts,queries.ts,form-lancamento.tsx,filtros-lancamentos.tsx,tabela-lancamentos.tsx}`, `src/features/lancamentos/lancamento-rapido.tsx` (campo opcional).
+
+**Interfaces — Produces:** `normalizarFavorecido(nome: string): string` (chave); `listarFavorecidos(ws: string): Promise<{ chave: string; nome: string; total: number }[]>` (nome = grafia mais recente); filtro `favorecidoChave?: string` em `listarLancamentos` (Task 8); `criarLancamento`/`editarLancamento` aceitam `favorecido?: string` (grava nome aparado e chave; vazio → nulos).
+
+- [ ] **Step 1: Testes que falham (`normalizar.test.ts`):** `'Jeová'`, `'jeova'`, `'  Senhor   Jeová '`, `'Sr. Jeová'`, `'seu Jeová'` → todos `'jeova'`; `'Dona Maria José'` → `'maria jose'`; `'João da Silva'` → `'joao da silva'`; `''` e `'senhor'` → `''`. Integração: lançamento com favorecido 'Jeová' é achado por filtro com chave de 'senhor jeova'; B não vê favorecidos de A; `listarFavorecidos` agrupa por chave e devolve a grafia mais recente.
+- [ ] **Step 2:** FAIL → implementar → PASS; migração aplicada na dev; `npm run test:integracao` verde.
+- [ ] **Step 3:** UI: campo "Para quem / De quem" no formulário (datalist/autocomplete com `listarFavorecidos`), coluna na tabela e filtro por favorecido.
+- [ ] **Step 4:** lint/typecheck/test/build; commit `feat: favorecido nos lançamentos`.
+
 ### Task 15: Lançamento por voz
 
 **Files:** Create `src/features/voz/{interpretar-fala.ts,interpretar-fala.test.ts,numeros-extenso.ts,numeros-extenso.test.ts,valor-por-extenso.ts,use-reconhecimento.ts,botao-voz.tsx,confirmacao-voz.tsx}`; Modify `src/app/w/[id]/page.tsx` (botão no topo), `src/features/lancamentos/lancamento-rapido.tsx` (aceitar valores iniciais; atalho de voz no sheet).
 
 **Interfaces — Consumes:** `aplicarRegras` (Task 6), `criarLancamento` e cookie `ultima_conta_<ws>` (Tasks 8/14), `formatarBRL`. **Produces:**
 ```ts
-type FalaInterpretada = { ok: true; valorCentavos: number; descricao: string; data: string } // valor com sinal: saída negativa
+type FalaInterpretada = { ok: true; valorCentavos: number; descricao: string; data: string; favorecido?: string } // valor com sinal: saída negativa; favorecido extraído de "para o/a <nome>" (saída) ou "de/do/da <nome>" (entrada), sem tratamento ("senhor Jeová" → "Jeová")
                       | { ok: false; motivo: 'vazio' | 'sem_valor' }
 interpretarFala(texto: string, hoje: string): FalaInterpretada
 extensoParaNumero(palavras: string): number | null        // "cinco mil e quinhentos" -> 5500
@@ -283,19 +295,51 @@ useReconhecimento(): { suportado: boolean; ouvindo: boolean; parcial: string; in
 ```
 
 - [ ] **Step 1: Testes que falham** (`hoje = '2026-10-15'`):
-  - `'200 reais para o senhor Jeová'` → `{ ok: true, valorCentavos: -20000, descricao: 'Para o senhor Jeová', data: '2026-10-15' }`.
+  - `'200 reais para o senhor Jeová'` → `{ ok: true, valorCentavos: -20000, descricao: 'Para o senhor Jeová', data: '2026-10-15', favorecido: 'Jeová' }`.
   - `'pagamento do boleto de 5 mil reais referente a financiamento da van Renault'` → `-500000`, descrição contém `'financiamento da van Renault'` e começa com maiúscula.
   - `'R$ 1.500,50 conta de luz'` → `-150050`, `'Conta de luz'`.
-  - `'recebi 350 reais do João'` → `+35000`, descrição `'Do João'`.
+  - `'recebi 350 reais do João'` → `+35000`, descrição `'Do João'`, `favorecido: 'João'`; `'200 reais de gasolina'` → sem `favorecido`.
   - `'200 reais e 50 centavos padaria'` → `-20050`.
   - `'cinco mil e quinhentos de aluguel'` → `-550000`.
-  - `'ontem paguei 80 reais de gasolina'` → `data: '2026-10-14'`; `'dia 20 paguei 50 reais'` → `data: '2026-09-20'`; `'dia 3 ...'` → `'2026-10-03'`.
+  - `'ontem paguei 80 reais de gasolina'` → `data: '2026-10-14'`; `'dia 20 paguei 50 reais'` → `data: '2026-09-20'`; `'dia 3 ...'` → `'2026-10-03'`; `'dia 29 de setembro paguei 100 reais para o senhor Jeová'` → `data: '2026-09-29'`, `-10000`, `favorecido: 'Jeová'`; `'dia 5 de outubro ...'` → `'2026-10-05'`; mês futuro sem ano (`'dia 10 de dezembro ...'` com hoje 2026-10-15) → `'2025-12-10'`.
   - `'para o senhor Jeová'` → `{ ok: false, motivo: 'sem_valor' }`; `'   '` → `{ ok: false, motivo: 'vazio' }`.
   - `extensoParaNumero`: `'duzentos'` → 200, `'mil e duzentos'` → 1200, `'dois mil e trinta'` → 2030, `'banana'` → null. `valorPorExtenso(20000)` → `'duzentos reais'`, `valorPorExtenso(150050)` → `'mil e quinhentos reais e cinquenta centavos'`.
 - [ ] **Step 2:** FAIL → implementar (normalizar: minúsculas, sem acento para casar palavras-chave mas descrição preserva acentos; datas por aritmética de string, sem `Date` com fuso) → PASS.
 - [ ] **Step 3:** `useReconhecimento` com `window.SpeechRecognition ?? window.webkitSpeechRecognition`, `lang 'pt-BR'`, `interimResults true`, `continuous false`; `suportado false` fora do navegador ou sem API. Erros `not-allowed` → mensagem "Permita o microfone nas configurações do navegador".
-- [ ] **Step 4:** Invocar a skill `frontend-design` antes do visual (pedir confirmação ao usuário conforme CLAUDE.md). `BotaoVoz` no topo do dashboard (~120px, alto contraste, animação de pulso respeitando `prefers-reduced-motion`, rótulo "Toque e fale", `aria-label`); `ConfirmacaoVoz` em tela cheia: valor ≥ 40px com cor por sinal, descrição, data, conta, categoria sugerida (`aplicarRegras`), botões "Está certo" e "Falar de novo" com ≥ 56px de altura, link "Corrigir" (abre lançamento rápido preenchido). Após salvar: `speechSynthesis.speak` com `'Anotado: ' + valorPorExtenso(|v|) + ' ' + descricao` em `pt-BR`. Sem suporte: botão "Use o Chrome para falar" abre lançamento rápido.
+- [ ] **Step 4:** Invocar a skill `frontend-design` antes do visual (pedir confirmação ao usuário conforme CLAUDE.md). `BotaoVoz` no topo do dashboard (~120px, alto contraste, animação de pulso respeitando `prefers-reduced-motion`, rótulo "Toque e fale", `aria-label`); `ConfirmacaoVoz` em tela cheia: valor ≥ 40px com cor por sinal, descrição, favorecido ("Para: Jeová", editável), data, conta, categoria sugerida (`aplicarRegras`), botões "Está certo" e "Falar de novo" com ≥ 56px de altura, link "Corrigir" (abre lançamento rápido preenchido). Após salvar: `speechSynthesis.speak` com `'Anotado: ' + valorPorExtenso(|v|) + ' ' + descricao` em `pt-BR`. Sem suporte: botão "Use o Chrome para falar" abre lançamento rápido.
 - [ ] **Step 5: Verificar** no navegador: com `resize_window` mobile, fluxo completo simulando o resultado do reconhecimento (injetar `final` via props/teste de componente, já que o navegador do agente não tem microfone); no celular real do usuário, as duas frases de exemplo dele. lint/typecheck/test verdes. Commit `feat: lançamento por voz`.
+
+### Task 15b: Exportação de lista por favorecido e período (tela + voz)
+
+**Files:** Create `src/features/exportacao/{relatorio.ts,relatorio.test.ts,periodos.ts,periodos.test.ts,render-png.ts,render-pdf.ts,compartilhar.ts,pagina-exportar.tsx,previa-relatorio.tsx}`; `src/features/voz/{interpretar-comando.ts,interpretar-comando.test.ts}`; página `src/app/w/[id]/exportar/page.tsx`; Modify `src/features/voz/{botao-voz.tsx,confirmacao-voz.tsx}`, `src/features/lancamentos/tabela-lancamentos.tsx` (botão Exportar com os filtros atuais), navegação. Dep: `jspdf`.
+
+**Interfaces — Consumes:** `listarLancamentos` com filtro `favorecidoChave`, `listarFavorecidos`, `normalizarFavorecido` (Task 14b), `interpretarFala` e helpers de data/extenso (Task 15), `formatarBRL`. **Produces:**
+```ts
+type OpcoesRelatorio = { favorecido: string; de: string; ate: string; tipo: 'saidas' | 'entradas' | 'todas'; mostrarTotal: boolean; anotacoes: 'descricao' | 'branco' }
+type Relatorio = { titulo: string; periodo: string; linhas: { data: string; anotacao: string; valor: string }[]; total?: string }
+montarRelatorio(lancamentos: { data: string; descricao: string; valorCentavos: number }[], op: OpcoesRelatorio): Relatorio
+type Comando =
+  | { tipo: 'lancamento' }
+  | { tipo: 'exportar'; favorecido: string; de: string; ate: string; filtroTipo: 'saidas' | 'entradas' | 'todas' }  // favorecido '' = todos
+  | { tipo: 'exportar_incompleto'; falta: 'periodo' }
+interpretarComando(texto: string, hoje: string): Comando
+resolverPeriodo(texto: string, hoje: string): { de: string; ate: string } | null
+sugerirFavorecidos(busca: string, existentes: { chave: string; nome: string }[], limite?: number): { chave: string; nome: string }[]
+renderizarPng(r: Relatorio): Promise<Blob[]>   // até 25 linhas por imagem, largura 1080
+renderizarPdf(r: Relatorio): Promise<Blob>
+compartilharOuBaixar(arquivos: File[], titulo: string): Promise<void>   // navigator.share({ files }) quando suportado, senão download
+```
+
+- [ ] **Step 1: Testes que falham** (`hoje = '2026-10-08'`):
+  - `montarRelatorio` com os 3 pagamentos da conversa de referência (29/09 R$ 100,00; 05/10 R$ 300,00; 08/10 R$ 300,00; saídas a 'Jeová'; `anotacoes: 'descricao'`; `mostrarTotal: false`) → `titulo 'Transações efetuadas | Jeová'`, `periodo '29/09/2026 a 08/10/2026'`, linhas em ordem de data crescente com `data 'dd/mm/aaaa'` e `valor 'R$ 100,00'`/`'R$ 300,00'` (sem sinal nas saídas) e **sem `total`**; com `mostrarTotal: true` → `total 'R$ 700,00'`; `anotacoes: 'branco'` → `anotacao ''`; `tipo: 'todas'` mantém o sinal (`-R$ 300,00`); lançamento fora do intervalo não entra (31/12 e 01/01 em intervalos que os separam); `favorecido: ''` → título `'Transações efetuadas | Todos'`.
+  - `resolverPeriodo`: `'este mês'` → `{ de: '2026-10-01', ate: '2026-10-08' }`; `'mês passado'` → `{ de: '2026-09-01', ate: '2026-09-30' }`; `'últimos 15 dias'` → `{ de: '2026-09-23', ate: '2026-10-08' }`; `'semana passada'` (segunda a domingo anteriores) → `{ de: '2026-09-28', ate: '2026-10-04' }`; `'de 29 de setembro até 8 de outubro'` → `{ de: '2026-09-29', ate: '2026-10-08' }`; `'de 1 a 8 de outubro'` → `{ de: '2026-10-01', ate: '2026-10-08' }`; `'de 25 de dezembro a 5 de janeiro'` com hoje `2026-01-10` → `{ de: '2025-12-25', ate: '2026-01-05' }`; ano omitido com data futura → ano anterior; intervalo invertido (`'de 8 a 1 de outubro'`) é corrigido; sem período → `null`.
+  - `interpretarComando`: `'exporte as transações para o senhor Jeová de 29 de setembro até 8 de outubro'` → `{ tipo: 'exportar', favorecido: 'Jeová', de: '2026-09-29', ate: '2026-10-08', filtroTipo: 'saidas' }`; `'manda a lista do Jeová deste mês'` → exportar com este mês; `'exportar o que recebi do João no mês passado'` → `filtroTipo: 'entradas'`, favorecido `'João'`; `'exporte tudo do mês passado'` → `favorecido: ''`; `'exporte para Jeová'` → `{ tipo: 'exportar_incompleto', falta: 'periodo' }`; `'200 reais para o senhor Jeová'` → `{ tipo: 'lancamento' }`.
+  - `sugerirFavorecidos('jeova', [{ chave: 'jeova', nome: 'Jeová' }, { chave: 'jose', nome: 'José' }])` → Jeová primeiro; `'jeovah'` (distância 1) também sugere Jeová; nome sem parecido → `[]`.
+- [ ] **Step 2:** FAIL → implementar (datas por aritmética de string; nomes de mês em PT-BR sem acento para casar; reutilizar os helpers da Task 15) → PASS.
+- [ ] **Step 3:** Renderização. `renderizarPng`: canvas de 1080px de largura, título grande (≥ 48px), período abaixo, cabeçalho **Data | Anotações | Valor**, linhas com fonte ≥ 36px e zebra suave, contraste ≥ 7:1, valor alinhado à direita; Anotações com até 2 linhas e reticências; total só se `r.total`; mais de 25 linhas → várias imagens com rodapé "Parte 1/N". `renderizarPdf` com `jspdf`: A4 retrato, mesma estrutura, paginação automática, acentos preservados (`Jeová`, `Anotações`). Nada vai para servidor.
+- [ ] **Step 4:** Tela `/w/[id]/exportar` (mobile-first, botões ≥ 56px): favorecido com autocomplete e opção "Todos", período com atalhos e dois campos de data, tipo (padrão saídas), opções "mostrar total" (desligada) e "anotações" (descrição ou em branco), prévia do relatório, botões **Compartilhar**, **Baixar PNG**, **Baixar PDF**; estado vazio "Nenhuma transação nesse período para <nome>". O botão "Exportar" da lista de lançamentos leva à tela com os filtros preenchidos.
+- [ ] **Step 5:** Voz: o `BotaoVoz` passa o texto final por `interpretarComando`. `exportar` → action de servidor (com `exigirUsuario`) busca os lançamentos; a `ConfirmacaoVoz` (modo exportação) mostra o relatório pronto com "Compartilhar", "Baixar" e "Falar de novo", e fala "Encontrei três transações para Jeová, de 29 de setembro a 8 de outubro" (sem total); zero resultados → "Não encontrei transações nesse período"; favorecido inexistente → mostra e fala as sugestões de `sugerirFavorecidos`; `exportar_incompleto` → pergunta o período.
+- [ ] **Step 6: Verificar:** no navegador (`resize_window` mobile), criar pelo formulário os 3 pagamentos da conversa para 'Jeová', gerar a lista e conferir visualmente o PNG (título, colunas, valores, sem soma) e abrir o PDF; testar o Compartilhar (no desktop cai no download); simular a fala `'exporte as transações para o senhor Jeová de 29 de setembro até 8 de outubro'` injetando o texto; no celular real do usuário, conferir o Compartilhar abrindo o WhatsApp e a fala real. lint/typecheck/test/build verdes. Commit `feat: exportação de lista por favorecido`.
 
 ### Task 16: Orientador por regras e biblioteca "Aprenda"
 

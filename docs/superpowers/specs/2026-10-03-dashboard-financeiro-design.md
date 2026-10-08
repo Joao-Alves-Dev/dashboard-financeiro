@@ -14,7 +14,7 @@ Restrições: 5-8h/semana. Custo zero: Neon (plano grátis: 100 projetos, 0,5 GB
 
 ## Escopo por fase
 
-- **v1 (este spec):** workspaces Pessoal/Empresa, contas, categorias, lançamentos (CRUD), importação CSV/OFX com prévia/dedupe/desfazer, regras de categorização, orçamento vs realizado, dashboard, demo isolada, **metas de poupança, PWA com lançamento rápido, lançamento por voz, orientador por regras + biblioteca "Aprenda"**.
+- **v1 (este spec):** workspaces Pessoal/Empresa, contas, categorias, lançamentos (CRUD), importação CSV/OFX com prévia/dedupe/desfazer, regras de categorização, orçamento vs realizado, dashboard, demo isolada, **metas de poupança, PWA com lançamento rápido, lançamento por voz, favorecido + exportação de lista (PNG/PDF) por pessoa e período, orientador por regras + biblioteca "Aprenda"**.
 - **Ordem de entrega:** núcleo comum → recursos pessoais (metas, PWA, orientador) → publicação pessoal → demo e material de portfólio.
 - **Futuro opcional:** assistente com IA generativa (Claude API, Sonnet 5.5), ativado só se houver `ANTHROPIC_API_KEY`; reutiliza o contexto do orientador.
 - **v2 (fora):** projeção de caixa, lançamentos recorrentes.
@@ -128,6 +128,20 @@ Público principal: o pai do usuário (idoso, pouca familiaridade com digitaçã
 
 **Conta do pai:** usuário próprio (criado com `criar-usuario`), workspace próprio; o usuário principal é adicionado como `membro` (papel novo, mesmas permissões que `dono` na v1) via script `adicionar-membro` (sem tela de convites na v1).
 
+## Favorecido e exportação de lista
+
+Origem: o pai do usuário precisa enviar a alguém (ex.: o Sr. Jeová) a lista dos pagamentos feitos a essa pessoa num período. Referência (conversa compartilhada pelo usuário): lista em PNG com título "Transações efetuadas | Jeová" e colunas **Data | Anotações | Valor**, **sem soma**, formato adequado para encaminhar.
+
+**Favorecido:** `lancamentos.favorecido` (text, nullable; nome como falado/digitado, ex.: "Jeová") e `lancamentos.favorecido_chave` (text, nullable; chave normalizada: NFD sem acentos, minúsculas, sem tratamentos "senhor/sr/seu/dona/sra/dr/dra", espaços colapsados — calculada na aplicação ao gravar). Índice `(workspace_id, favorecido_chave, data)`. Preenchido pela voz ("para o senhor Jeová" → "Jeová"; em entradas, "recebi ... do João" → "João"), editável no formulário de lançamento, com sugestão dos nomes já usados (distintos por chave). Busca/filtro por chave, então "Jeová", "jeova" e "senhor Jeová" coincidem. Filtro também na tela de lançamentos.
+
+**Tela `/w/[id]/exportar`:** favorecido (autocomplete), período (de/até + atalhos: este mês, mês passado, últimos 30 dias), tipo (saídas | entradas | todas; padrão saídas), opções: "mostrar total" (padrão **desligado**) e "anotações" (padrão: texto da descrição do lançamento; alternativa: deixar em branco para escrever à mão após imprimir). Prévia na tela; botões grandes **Compartilhar** (Web Share API com arquivo, abre o WhatsApp no celular; sem suporte → baixar), **Baixar PNG** e **Baixar PDF**. Botão de exportar também na tela de lançamentos (respeitando os filtros).
+
+**Relatório (função pura):** `montarRelatorio(lancamentos, opcoes)` → `{ titulo: 'Transações efetuadas | <favorecido>', periodo: 'dd/mm/aaaa a dd/mm/aaaa', linhas: [{ data: 'dd/mm/aaaa', anotacao, valor: 'R$ 300,00' }], total?: string }`; ordenado por data crescente; valores em módulo para saídas filtradas (sem sinal), com sinal quando "todas". PNG renderizado no navegador por canvas (largura 1080px, fonte grande, alto contraste, até 25 linhas por imagem; acima disso gera várias imagens "parte 1/N"); PDF no navegador (biblioteca leve, ex.: `jspdf`), paginado. Sem servidor, sem custo.
+
+**Voz:** o mesmo botão de microfone. `interpretarComando(texto, hoje)` decide: se contém verbo de exportação ("exporte", "exportar", "gerar lista", "manda a lista", "relatório") → `{ tipo: 'exportar', favorecido, de, ate, filtroTipo }`; senão → lançamento (`interpretarFala`). Períodos: "de 29 de setembro até 8 de outubro", "de 1 a 8 de outubro", "este mês", "mês passado", "últimos N dias", "semana passada"; ano omitido = ano atual, e se a data resultante for futura, ano anterior. Resposta falada: "Encontrei três transações para Jeová, de 29 de setembro a 8 de outubro." (sem total, a menos que a opção esteja ligada). Favorecido inexistente → mostra nomes parecidos (distância de edição pequena sobre a chave) e pergunta. Zero resultados → "Não encontrei transações" e mostra o período usado.
+
+**Fora do escopo:** leitura automática de foto/extrato por IA ou OCR (exige serviço pago ou é pouco confiável); pagamentos antigos entram por voz ou formulário (a voz entende "dia 29 de setembro").
+
 ## Orientador financeiro por regras
 
 Sem IA, custo zero. Dois componentes:
@@ -195,8 +209,8 @@ Repositório público no GitHub; README como estudo de caso (problema, decisões
 | 1 | Setup, esquema + RLS + teste de isolamento, auth, workspace, CRUD de lançamentos/contas, primeiro deploy |
 | 2 | Parsers OFX/CSV (TDD), fluxo de importação com prévia/desfazer, regras |
 | 3 | Funções SQL + gráficos, orçamento |
-| 4 | Edições, metas, PWA + lançamento rápido, lançamento por voz |
-| 5 | Orientador (regras + biblioteca), publicação pessoal |
+| 4 | Edições, metas, PWA + lançamento rápido, favorecido, lançamento por voz |
+| 5 | Exportação de lista por favorecido (tela + voz), orientador (regras + biblioteca), publicação pessoal |
 | 6 | Demo (seed + limpeza), Playwright, README/GIF, publicação portfólio |
 
 Corte em caso de atraso (nesta ordem): categorização em lote, "copiar mês anterior". Núcleo intocável: importação, dashboard, metas, orientador.
