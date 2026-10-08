@@ -265,6 +265,7 @@ Actions: `criarMeta`, `editarMeta`, `excluirMeta`, `registrarAporte(ws, metaId, 
 - [ ] **Step 2:** Barra inferior visível só `< 768px` (Início, Lançamentos, +, Metas, Orientações); `+` abre sheet do lançamento rápido (shadcn `Sheet`, lado `bottom`).
 - [ ] **Step 3:** Lançamento rápido: valor com `inputMode="decimal"` e foco automático, "saída" pré-selecionado, chips de `categoriasFrequentes` + "mais…", conta pré-selecionada pelo cookie, data hoje editável, descrição opcional; ao salvar, fecha e mostra toast.
 - [ ] **Step 4: Verificar** com `resize_window` preset mobile: lançar um gasto em ≤ 3 toques após abrir o sheet; Lighthouse/Chrome reconhece o app como instalável (manifest válido). lint/typecheck/test verdes.
+- [ ] **Step 4b (pendências herdadas da Task 10):** (1) corrigir `--font-sans: var(--font-sans)` auto-referente em `src/app/globals.css` (a fonte do app cai em serifa): apontar para a variável da fonte carregada em `layout.tsx` (ex.: Geist) e confirmar no navegador; (2) tema escuro alcançável: aplicar a classe `.dark` a partir de `prefers-color-scheme` (e `theme-color` no manifest/viewport), sem toggle manual na v1; verificar gráficos e tiles nos dois temas.
 - [ ] **Step 5:** commit `feat: PWA e lançamento rápido`.
 
 ### Task 15: Lançamento por voz
