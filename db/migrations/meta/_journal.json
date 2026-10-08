@@ -50,6 +50,13 @@
       "when": 1791414682297,
       "tag": "0006_funcoes_importacao",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791419214811,
+      "tag": "0007_dashboard",
+      "breakpoints": true
     }
   ]
 }
