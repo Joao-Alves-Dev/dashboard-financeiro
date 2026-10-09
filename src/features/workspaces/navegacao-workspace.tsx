@@ -11,6 +11,7 @@ const ITENS = [
   { chave: 'importar', rota: '/importar' },
   { chave: 'orcamento', rota: '/orcamento' },
   { chave: 'metas', rota: '/metas' },
+  { chave: 'orientacoes', rota: '/orientacoes' },
   { chave: 'config', rota: '/config' },
 ] as const
 

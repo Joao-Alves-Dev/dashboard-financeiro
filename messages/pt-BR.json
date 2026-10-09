@@ -9,7 +9,13 @@
     "orcamento": "Orçamento",
     "metas": "Metas",
     "config": "Config",
-    "principal": "Navegação principal"
+    "principal": "Navegação principal",
+    "inicio": "Início",
+    "orientacoes": "Orientações",
+    "lancar": "Lançar",
+    "mais": "Mais",
+    "maisTitulo": "Mais páginas",
+    "barra": "Navegação rápida"
   },
   "comum": {
     "emBreve": "Em breve",
@@ -536,5 +542,26 @@
       "retiradaMaiorQueGuardado": "A retirada é maior que o valor guardado ({guardado}).",
       "excluirDeixaNegativo": "Não é possível excluir este registro: o guardado ficaria negativo. Exclua antes a retirada correspondente."
     }
+  },
+  "rapido": {
+    "titulo": "Lançamento rápido",
+    "descricao": "Informe o valor, escolha a categoria e salve.",
+    "abrir": "Lançamento rápido",
+    "valor": "Valor",
+    "categoria": "Categoria",
+    "mais": "mais…",
+    "menos": "menos",
+    "todasCategorias": "Todas as categorias",
+    "descricao_campo": "Descrição (opcional)",
+    "descricaoPadrao": "Lançamento rápido",
+    "conta": "Conta",
+    "data": "Data",
+    "salvar": "Salvar",
+    "salvando": "Salvando…",
+    "salvo": "Lançamento salvo: {valor} ({tipo}).",
+    "semContaTitulo": "Nenhuma conta cadastrada",
+    "semContaTexto": "Todo lançamento pertence a uma conta. Crie a primeira em Configurações.",
+    "semContaLink": "Criar conta",
+    "semCategorias": "Sem categorias"
   }
 }

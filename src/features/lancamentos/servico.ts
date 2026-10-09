@@ -1,9 +1,10 @@
 import 'server-only'
-import { and, count, desc, eq, gte, ilike, inArray, lte, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, ilike, inArray, lt, lte, type SQL } from 'drizzle-orm'
 import { comUsuario } from '@/db/com-usuario'
-import { lancamentos } from '@/db/schema'
+import { categorias, lancamentos } from '@/db/schema'
 import { ErroDominio } from '@/lib/erro-dominio'
 import { ehUuid } from '@/lib/uuid'
+import { janelaCategoriasFrequentes } from './categorias-frequentes'
 import { POR_PAGINA, type FiltrosLancamentos, type LancamentoInput } from './schemas'
 
 export type Lancamento = typeof lancamentos.$inferSelect
@@ -125,5 +126,39 @@ export async function categorizarEmLoteDoUsuario(
       .where(and(eq(lancamentos.workspaceId, ws), inArray(lancamentos.id, unicos)))
       .returning({ id: lancamentos.id })
     return { atualizados: atualizados.length }
+  })
+}
+
+export type CategoriaFrequente = typeof categorias.$inferSelect
+
+/**
+ * Categorias de despesa com mais lançamentos de SAÍDA (valor < 0) na janela de 60 dias
+ * terminando em `hoje` (inclusive). Empate pela contagem desempata por nome.
+ */
+export async function categoriasFrequentesDoUsuario(
+  userId: string,
+  ws: string,
+  hoje: string,
+  limite = 6,
+): Promise<CategoriaFrequente[]> {
+  const { de, ate } = janelaCategoriasFrequentes(hoje)
+  return comUsuario(userId, async (tx) => {
+    const linhas = await tx
+      .select({ categoria: categorias, qtd: count() })
+      .from(lancamentos)
+      .innerJoin(categorias, and(eq(categorias.id, lancamentos.categoriaId), eq(categorias.workspaceId, lancamentos.workspaceId)))
+      .where(
+        and(
+          eq(lancamentos.workspaceId, ws),
+          lt(lancamentos.valorCentavos, 0),
+          gte(lancamentos.data, de),
+          lte(lancamentos.data, ate),
+          eq(categorias.natureza, 'despesa'),
+        ),
+      )
+      .groupBy(categorias.id)
+      .orderBy(desc(count()), asc(categorias.nome), asc(categorias.id))
+      .limit(Math.max(0, Math.floor(limite)))
+    return linhas.map((l) => l.categoria)
   })
 }
