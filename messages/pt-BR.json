@@ -7,6 +7,7 @@
     "lancamentos": "Lançamentos",
     "importar": "Importar",
     "orcamento": "Orçamento",
+    "metas": "Metas",
     "config": "Config",
     "principal": "Navegação principal"
   },
@@ -444,6 +445,96 @@
       "valorNegativo": "O orçamento não pode ser negativo.",
       "valorGrande": "Valor alto demais.",
       "categoriaInvalida": "Escolha uma categoria de despesa deste workspace."
+    }
+  },
+  "metas": {
+    "titulo": "Metas de poupança",
+    "descricao": "Defina quanto quer guardar e até quando. O aporte é dinheiro separado para a meta: não é lançamento e não muda o resultado do mês.",
+    "nova": "Nova meta",
+    "novaTitulo": "Nova meta",
+    "editarTitulo": "Editar meta",
+    "formDescricao": "Quanto você quer juntar e até quando.",
+    "campos": {
+      "nome": "Nome",
+      "nomePlaceholder": "Ex.: Reserva de emergência",
+      "valorAlvo": "Valor alvo",
+      "valorDica": "0,00",
+      "dataAlvo": "Data alvo"
+    },
+    "vazioTitulo": "Crie sua primeira meta",
+    "vazioTexto": "Por exemplo: Reserva de emergência. Defina o valor e o prazo e veja quanto precisa guardar por mês.",
+    "criarPrimeira": "Criar meta",
+    "lista": "Suas metas",
+    "guardadoDe": "{guardado} de {alvo}",
+    "progressoTexto": "{pct}: {guardado} de {alvo}",
+    "prazo": "Prazo: {data}",
+    "mesesRestantes": "{n, plural, one {# mês restante} other {# meses restantes}}",
+    "necessario": "Necessário por mês",
+    "sobraMedia": "Sua sobra média",
+    "sobraAjuda": "Média do resultado dos 3 últimos meses fechados.",
+    "faltaPorMes": "Faltam {valor} por mês para chegar a tempo.",
+    "vencidaTexto": "O prazo passou e ainda faltam {falta}. Edite a data alvo para recalcular.",
+    "concluidaTexto": "Meta alcançada: você guardou o valor alvo.",
+    "situacao": {
+      "no_ritmo": "No ritmo",
+      "atrasada": "Atrasada",
+      "concluida": "Concluída",
+      "vencida": "Prazo vencido"
+    },
+    "aporte": {
+      "botao": "Guardar ou retirar",
+      "titulo": "Movimentar {meta}",
+      "descricao": "Guarde dinheiro nesta meta ou retire o que já guardou.",
+      "tipo": "Tipo",
+      "guardar": "Guardar",
+      "retirar": "Retirar",
+      "valor": "Valor",
+      "valorDica": "0,00",
+      "data": "Data",
+      "observacao": "Observação",
+      "observacaoDica": "Opcional",
+      "guardadoAtual": "Guardado agora: {valor}",
+      "registrar": "Registrar"
+    },
+    "historico": {
+      "mostrar": "Ver aportes ({n})",
+      "ocultar": "Ocultar aportes",
+      "titulo": "Aportes de {meta}",
+      "vazio": "Nenhum aporte registrado ainda.",
+      "aporte": "Aporte",
+      "retirada": "Retirada",
+      "excluir": "Excluir aporte",
+      "excluirTitulo": "Excluir este registro?",
+      "excluirTexto": "{tipo} de {valor} em {data} será removido e o guardado da meta será recalculado."
+    },
+    "acoes": {
+      "editar": "Editar meta",
+      "excluir": "Excluir meta"
+    },
+    "excluirTitulo": "Excluir a meta {nome}?",
+    "excluirTexto": "Esta ação não pode ser desfeita.",
+    "excluirComAportes": "{n, plural, one {Esta meta tem # aporte registrado, que também será apagado.} other {Esta meta tem # aportes registrados, que também serão apagados.}} Esta ação não pode ser desfeita.",
+    "dashboard": {
+      "titulo": "Metas de poupança",
+      "descricao": "As mais urgentes",
+      "verTodas": "Ver todas",
+      "vazioTitulo": "Nenhuma meta ainda",
+      "vazioTexto": "Crie uma meta, por exemplo Reserva de emergência, e acompanhe o ritmo.",
+      "criar": "Criar meta"
+    },
+    "validacao": {
+      "nomeObrigatorio": "Informe o nome da meta.",
+      "nomeLongo": "O nome pode ter no máximo 80 caracteres.",
+      "valorAlvoPositivo": "O valor alvo precisa ser maior que zero.",
+      "valorGrande": "Valor alto demais.",
+      "observacaoLonga": "A observação pode ter no máximo 200 caracteres."
+    },
+    "erros": {
+      "naoEncontrada": "Meta não encontrada.",
+      "aporteNaoEncontrado": "Aporte não encontrado.",
+      "exigeConfirmacao": "A meta tem {qtd, plural, one {# aporte} other {# aportes}}. Confirme para excluir a meta junto com os aportes.",
+      "retiradaMaiorQueGuardado": "A retirada é maior que o valor guardado ({guardado}).",
+      "excluirDeixaNegativo": "Não é possível excluir este registro: o guardado ficaria negativo. Exclua antes a retirada correspondente."
     }
   }
 }
