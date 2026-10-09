@@ -197,3 +197,52 @@ export const orcamentos = pgTable(
     }).onDelete('cascade'),
   ],
 )
+
+export const metas = pgTable(
+  'metas',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    nome: text('nome').notNull(),
+    valorAlvoCentavos: centavos('valor_alvo_centavos').notNull(),
+    dataAlvo: date('data_alvo', { mode: 'string' }).notNull(),
+    criadoEm: timestamp('criado_em', { withTimezone: true }).notNull().defaultNow(),
+    // Marcado/limpo automaticamente quando o guardado (soma dos aportes) cruza o alvo.
+    concluidaEm: timestamp('concluida_em', { withTimezone: true }),
+  },
+  (t) => [
+    check('metas_nome_check', sql`char_length(${t.nome}) between 1 and 80`),
+    check('metas_valor_alvo_check', sql`${t.valorAlvoCentavos} > 0`),
+    index('metas_workspace_idx').on(t.workspaceId),
+    // Alvo da FK composta de aportes_meta.
+    unique('metas_workspace_id_id_unique').on(t.workspaceId, t.id),
+  ],
+)
+
+export const aportesMeta = pgTable(
+  'aportes_meta',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    metaId: uuid('meta_id').notNull(),
+    data: date('data', { mode: 'string' }).notNull(),
+    // Retirada = valor negativo.
+    valorCentavos: centavos('valor_centavos').notNull(),
+    observacao: text('observacao'),
+    criadoEm: timestamp('criado_em', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('aportes_meta_valor_check', sql`${t.valorCentavos} <> 0`),
+    check('aportes_meta_observacao_check', sql`${t.observacao} is null or char_length(${t.observacao}) <= 200`),
+    index('aportes_meta_workspace_meta_data_idx').on(t.workspaceId, t.metaId, t.data),
+    foreignKey({
+      name: 'aportes_meta_workspace_meta_fk',
+      columns: [t.workspaceId, t.metaId],
+      foreignColumns: [metas.workspaceId, metas.id],
+    }).onDelete('cascade'),
+  ],
+)
