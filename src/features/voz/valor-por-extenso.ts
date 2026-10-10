@@ -33,7 +33,7 @@ function juntar(prefixo: string, resto: number): string {
 }
 
 /** Inteiro >= 0 até 999.999.999 por extenso. */
-function inteiroPorExtenso(n: number): string {
+export function inteiroPorExtenso(n: number): string {
   if (n === 0) return 'zero'
   if (n < 1000) return ate999(n)
   if (n < 1_000_000) {
@@ -65,4 +65,14 @@ export function valorPorExtenso(centavos: number): string {
   if (cents === 0) return textoReais()
   if (reais === 0) return textoCents()
   return `${textoReais()} e ${textoCents()}`
+}
+
+/**
+ * Quantidade de coisas femininas ("transações") para a fala: 1 → "uma", 2 → "duas", até 20 por extenso;
+ * acima disso os algarismos ("25"), que a voz do navegador lê bem e que evitam erro de gênero.
+ */
+export function quantidadeFalada(n: number): string {
+  if (n === 1) return 'uma'
+  if (n === 2) return 'duas'
+  return n >= 0 && n <= 20 ? inteiroPorExtenso(n) : String(n)
 }

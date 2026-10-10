@@ -15,7 +15,8 @@
     "lancar": "Lançar",
     "mais": "Mais",
     "maisTitulo": "Mais páginas",
-    "barra": "Navegação rápida"
+    "barra": "Navegação rápida",
+    "exportar": "Exportar"
   },
   "comum": {
     "emBreve": "Em breve",
@@ -185,7 +186,8 @@
     "loteGrande": "Selecione no máximo {max} lançamentos por vez.",
     "loteInvalido": "Algum lançamento selecionado não pertence a este workspace. Nada foi alterado.",
     "favorecidoSugestoes": "Nomes já usados",
-    "favorecidoLinha": "{tipo, select, entrada {De} other {Para}}: {nome}"
+    "favorecidoLinha": "{tipo, select, entrada {De} other {Para}}: {nome}",
+    "exportar": "Exportar lista"
   },
   "config": {
     "titulo": "Configurações",
@@ -619,6 +621,90 @@
       "semMicrofone": "Não encontrei o microfone.",
       "tempoEsgotado": "O tempo acabou. Toque e fale de novo.",
       "generico": "Não consegui ouvir. Toque e fale de novo."
-    }
+    },
+    "exportar": {
+      "titulo": "Lista pronta",
+      "buscando": "Procurando as transações…",
+      "encontrou": "Encontrei {quantidade} para {nome}, de {de} a {ate}",
+      "encontrouTodos": "Encontrei {quantidade}, de {de} a {ate}",
+      "encontrouDia": "Encontrei {quantidade} para {nome}, em {de}",
+      "encontrouTodosDia": "Encontrei {quantidade}, em {de}",
+      "umaTransacao": "uma transação",
+      "transacoes": "{n} transações",
+      "nenhuma": "Não encontrei transações nesse período",
+      "nenhumaPara": "Não encontrei transações para {nome} nesse período",
+      "periodoUsado": "Período: {de} a {ate}",
+      "naoExiste": "Não encontrei ninguém chamado {nome}.",
+      "querDizer": "Não encontrei {nome}. Você quis dizer {sugestoes}?",
+      "ou": " ou ",
+      "sugestoesTitulo": "Quem você quis dizer?",
+      "perguntaPeriodo": "De que período?",
+      "perguntaPeriodoPara": "De que período, para {nome}?",
+      "perguntaPeriodoDica": "Toque num atalho, ou fale. Por exemplo: \"este mês\" ou \"de 29 de setembro até 8 de outubro\".",
+      "compartilhar": "Compartilhar",
+      "baixar": "Baixar",
+      "baixarPdf": "Baixar em PDF",
+      "ajustar": "Ajustar",
+      "erro": "Não consegui montar a lista. Tente de novo.",
+      "compartilhado": "Pronto, lista compartilhada.",
+      "baixado": "Pronto, lista baixada.",
+      "atalhoEsteMes": "Este mês",
+      "atalhoMesPassado": "Mês passado",
+      "atalhoUltimos30": "Últimos 30 dias",
+      "previaAlt": "Lista pronta, parte {numero} de {total}",
+      "pdf": "PDF",
+      "fechar": "Fechar"
+    },
+    "dicaExportar": "Para a lista: \"exporte as transações do Jeová deste mês\""
+  },
+  "exportacao": {
+    "muitos": "Muitos lançamentos neste período. Reduza o intervalo.",
+    "periodoInvertido": "A data inicial precisa ser anterior à final.",
+    "titulo": "Exportar lista",
+    "descricao": "Monte a lista de pagamentos de uma pessoa num período e envie pelo WhatsApp ou baixe.",
+    "favorecido": "Para quem / De quem",
+    "favorecidoDica": "Escolha um nome ou deixe vazio para listar todos.",
+    "favorecidoPlaceholder": "Todos",
+    "todos": "Todos",
+    "nomeTitulo": "Nome no título",
+    "nomeTituloDica": "Aparece em \"Transações efetuadas | nome\". Deixe vazio para usar {padrao}.",
+    "periodo": "Período",
+    "de": "De",
+    "ate": "Até",
+    "atalhos": {
+      "esteMes": "Este mês",
+      "mesPassado": "Mês passado",
+      "ultimos30": "Últimos 30 dias"
+    },
+    "tipo": {
+      "titulo": "Quais transações",
+      "saidas": "Saídas",
+      "entradas": "Entradas",
+      "todas": "Todas"
+    },
+    "mostrarTotal": "Mostrar o total no final",
+    "anotacoes": {
+      "titulo": "Anotações",
+      "descricao": "Descrição",
+      "branco": "Em branco"
+    },
+    "apenasEfetivadas": "Só entram transações já efetivadas (as pendentes ficam de fora).",
+    "previa": "Como vai ficar",
+    "previaAlt": "Prévia da lista, parte {numero} de {total}",
+    "gerando": "Montando a lista…",
+    "buscando": "Procurando as transações…",
+    "vazio": "Nenhuma transação nesse período para {nome}",
+    "vazioTodos": "Nenhuma transação nesse período",
+    "naoExiste": "Não encontrei ninguém com o nome \"{nome}\".",
+    "querDizer": "Você quis dizer:",
+    "compartilhar": "Compartilhar",
+    "baixarPng": "Baixar PNG",
+    "baixarPdf": "Baixar PDF",
+    "compartilhadoOk": "Pronto, lista compartilhada.",
+    "baixadoOk": "Pronto, lista baixada.",
+    "erroGerar": "Não consegui montar a lista. Tente de novo.",
+    "erroBuscar": "Não consegui buscar as transações. Tente de novo.",
+    "tituloCompartilhar": "Transações efetuadas | {nome}",
+    "quantidade": "{n, plural, one {# transação} other {# transações}}"
   }
 }

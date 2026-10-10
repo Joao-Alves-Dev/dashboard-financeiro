@@ -45,6 +45,7 @@ export function BotaoVoz() {
           <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
             <p className="text-2xl leading-tight font-bold">{t('botao')}</p>
             <p className="text-base leading-snug text-muted-foreground">{t('exemplo')}</p>
+            <p className="text-sm leading-snug text-muted-foreground">{t('dicaExportar')}</p>
             <button
               type="button"
               onClick={digitar}

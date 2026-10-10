@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { valorPorExtenso } from './valor-por-extenso'
+import { quantidadeFalada, valorPorExtenso } from './valor-por-extenso'
 
 describe('valorPorExtenso', () => {
   it.each([
@@ -22,5 +22,16 @@ describe('valorPorExtenso', () => {
     [35000, 'trezentos e cinquenta reais'],
   ])('%i -> %s', (centavos, esperado) => {
     expect(valorPorExtenso(centavos)).toBe(esperado)
+  })
+})
+
+describe('quantidadeFalada', () => {
+  it('feminino até 20 por extenso, algarismos acima', () => {
+    expect(quantidadeFalada(1)).toBe('uma')
+    expect(quantidadeFalada(2)).toBe('duas')
+    expect(quantidadeFalada(3)).toBe('três')
+    expect(quantidadeFalada(20)).toBe('vinte')
+    expect(quantidadeFalada(21)).toBe('21')
+    expect(quantidadeFalada(1500)).toBe('1500')
   })
 })

@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from '@/lib/utils'
 
 const ITENS = [
+  { chave: 'exportar', rota: '/exportar' },
   { chave: 'importar', rota: '/importar' },
   { chave: 'orcamento', rota: '/orcamento' },
   { chave: 'config', rota: '/config' },

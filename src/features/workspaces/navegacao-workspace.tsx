@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 const ITENS = [
   { chave: 'dashboard', rota: '' },
   { chave: 'lancamentos', rota: '/lancamentos' },
+  { chave: 'exportar', rota: '/exportar' },
   { chave: 'importar', rota: '/importar' },
   { chave: 'orcamento', rota: '/orcamento' },
   { chave: 'metas', rota: '/metas' },

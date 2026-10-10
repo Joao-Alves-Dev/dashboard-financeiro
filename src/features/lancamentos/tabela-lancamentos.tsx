@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
-import { PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { FileDownIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -27,9 +27,11 @@ type Props = {
   categorias: OpcaoCategoria[]
   favorecidos: string[]
   temFiltro: boolean
+  /** Tela de exportação já preenchida com os filtros atuais (favorecido e período). */
+  hrefExportar: string
 }
 
-export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, contas, categorias, favorecidos, temFiltro }: Props) {
+export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, contas, categorias, favorecidos, temFiltro, hrefExportar }: Props) {
   const t = useTranslations('lancamentos')
   const tc = useTranslations('comum')
   const [formAberto, setFormAberto] = useState(false)
@@ -75,20 +77,26 @@ export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, co
         <p className="text-sm text-muted-foreground" aria-live="polite">
           {t('total', { total })}
         </p>
-        {semConta ? (
-          <Link
-            href={`/w/${workspaceId}/config?aba=contas`}
-            className={buttonVariants()}
-          >
-            <PlusIcon className="size-4" />
-            {t('criarConta')}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={hrefExportar} className={buttonVariants({ variant: 'outline' })}>
+            <FileDownIcon className="size-4" />
+            {t('exportar')}
           </Link>
-        ) : (
-          <Button onClick={abrirNovo}>
-            <PlusIcon />
-            {t('novo')}
-          </Button>
-        )}
+          {semConta ? (
+            <Link
+              href={`/w/${workspaceId}/config?aba=contas`}
+              className={buttonVariants()}
+            >
+              <PlusIcon className="size-4" />
+              {t('criarConta')}
+            </Link>
+          ) : (
+            <Button onClick={abrirNovo}>
+              <PlusIcon />
+              {t('novo')}
+            </Button>
+          )}
+        </div>
       </div>
 
       {algum && (

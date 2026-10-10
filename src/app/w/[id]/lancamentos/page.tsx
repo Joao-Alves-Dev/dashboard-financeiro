@@ -37,6 +37,11 @@ export default async function PaginaLancamentos({ params, searchParams }: PagePr
 
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA))
   const base = `/w/${ws.id}/lancamentos`
+  const exp = new URLSearchParams()
+  if (filtros.favorecidoChave) exp.set('favorecido', filtros.favorecidoChave)
+  if (filtros.de) exp.set('de', filtros.de)
+  if (filtros.ate) exp.set('ate', filtros.ate)
+  const hrefExportar = `/w/${ws.id}/exportar${exp.size > 0 ? `?${exp}` : ''}`
   const temFiltro = Boolean(filtros.de || filtros.ate || filtros.contaId || filtros.categoriaId || filtros.favorecidoChave || filtros.texto)
 
   return (
@@ -59,6 +64,7 @@ export default async function PaginaLancamentos({ params, searchParams }: PagePr
         categorias={categorias.map((c) => ({ id: c.id, nome: c.nome, natureza: c.natureza }))}
         favorecidos={favorecidos.map((f) => f.nome)}
         temFiltro={temFiltro}
+        hrefExportar={hrefExportar}
       />
       {totalPaginas > 1 && (
         <nav aria-label={tc('pagina', { pagina: filtros.pagina, total: totalPaginas })} className="flex items-center justify-between gap-2">
