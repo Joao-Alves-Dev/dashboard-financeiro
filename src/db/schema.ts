@@ -263,3 +263,49 @@ export const aportesMeta = pgTable(
     }).onDelete('cascade'),
   ],
 )
+
+/**
+ * Limites editáveis do orientador (uma linha por workspace; sem linha = padrões 15/30/30 aplicados no código).
+ * Percentuais inteiros: categoria 1-100, alta 1-500 (pode passar de 100% sobre a média), cartão 1-100.
+ */
+export const configOrientador = pgTable(
+  'config_orientador',
+  {
+    workspaceId: uuid('workspace_id')
+      .primaryKey()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    limiteCategoriaPct: integer('limite_categoria_pct').notNull().default(15),
+    altaPct: integer('alta_pct').notNull().default(30),
+    cartaoPct: integer('cartao_pct').notNull().default(30),
+  },
+  (t) => [
+    check('config_orientador_limite_categoria_check', sql`${t.limiteCategoriaPct} between 1 and 100`),
+    check('config_orientador_alta_check', sql`${t.altaPct} between 1 and 500`),
+    check('config_orientador_cartao_check', sql`${t.cartaoPct} between 1 and 100`),
+  ],
+)
+
+/**
+ * Alertas dispensados no mês. `chave` identifica a instância (id da categoria/meta; '' para regras globais).
+ * O alerta volta se a severidade subir (o app compara com `severidade`) ou no mês seguinte (`mes` muda).
+ */
+export const alertasDispensados = pgTable(
+  'alertas_dispensados',
+  {
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    regraId: text('regra_id').notNull(),
+    chave: text('chave').notNull(),
+    mes: date('mes', { mode: 'string' }).notNull(),
+    severidade: text('severidade').notNull(),
+    criadoEm: timestamp('criado_em', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.workspaceId, t.regraId, t.chave, t.mes] }),
+    check('alertas_dispensados_mes_dia1_check', sql`extract(day from ${t.mes}) = 1`),
+    check('alertas_dispensados_severidade_check', sql`${t.severidade} in ('critico', 'atencao', 'info', 'positivo')`),
+    check('alertas_dispensados_regra_check', sql`char_length(${t.regraId}) between 1 and 40`),
+    check('alertas_dispensados_chave_check', sql`char_length(${t.chave}) <= 64`),
+  ],
+)

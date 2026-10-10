@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { eq, sql } from 'drizzle-orm'
 import { db } from '@/db/cliente'
 import { comUsuario } from '@/db/com-usuario'
-import { aportesMeta, categorias, contas, lancamentos, metas, workspaces } from '@/db/schema'
+import { alertasDispensados, aportesMeta, categorias, configOrientador, contas, lancamentos, metas, workspaces } from '@/db/schema'
 import { apagarUsuariosTeste, criarUsuariosTeste } from './usuarios'
 
 describe('RLS por workspace', () => {
@@ -230,5 +230,97 @@ describe('RLS de metas e aportes_meta', () => {
   it('excluir a meta apaga seus aportes (cascade)', async () => {
     await comUsuario(A, (tx) => tx.delete(metas).where(eq(metas.id, metaA)))
     expect(await comUsuario(A, (tx) => tx.select().from(aportesMeta))).toEqual([])
+  })
+})
+
+describe('RLS de config_orientador e alertas_dispensados', () => {
+  let ids: string[] = []
+  let A: string
+  let B: string
+  let wsA: string
+  let wsB: string
+
+  const alertaA = () => ({ workspaceId: wsA, regraId: 'mes-negativo', chave: '', mes: '2026-10-01', severidade: 'critico' })
+
+  beforeAll(async () => {
+    try {
+      ids = await criarUsuariosTeste(2)
+      ;[A, B] = ids
+      const ra = await comUsuario(A, (tx) => tx.execute(sql`select criar_workspace('Casa A', 'pessoal') as id`))
+      wsA = (ra.rows[0] as { id: string }).id
+      const rb = await comUsuario(B, (tx) => tx.execute(sql`select criar_workspace('Casa B', 'pessoal') as id`))
+      wsB = (rb.rows[0] as { id: string }).id
+      await comUsuario(A, (tx) => tx.insert(configOrientador).values({ workspaceId: wsA, limiteCategoriaPct: 20 }))
+      await comUsuario(A, (tx) => tx.insert(alertasDispensados).values(alertaA()))
+      await comUsuario(B, (tx) => tx.insert(configOrientador).values({ workspaceId: wsB }))
+    } catch (e) {
+      await apagarUsuariosTeste(ids)
+      throw e
+    }
+  })
+
+  afterAll(async () => {
+    await apagarUsuariosTeste(ids)
+  })
+
+  it('app_user opera nas duas tabelas (grants); padrões 15/30/30 nas colunas', async () => {
+    const [c] = await comUsuario(B, (tx) => tx.select().from(configOrientador))
+    expect(c).toMatchObject({ limiteCategoriaPct: 15, altaPct: 30, cartaoPct: 30 })
+    expect(await comUsuario(A, (tx) => tx.select().from(alertasDispensados))).toHaveLength(1)
+  })
+
+  it('B não lê config nem alertas de A (só a sua config)', async () => {
+    const cs = await comUsuario(B, (tx) => tx.select().from(configOrientador))
+    expect(cs.map((x) => x.workspaceId)).toEqual([wsB])
+    expect(await comUsuario(B, (tx) => tx.select().from(alertasDispensados))).toEqual([])
+  })
+
+  it('B não insere no workspace de A', async () => {
+    await expect(comUsuario(B, (tx) => tx.insert(configOrientador).values({ workspaceId: wsA }))).rejects.toThrow()
+    await expect(
+      comUsuario(B, (tx) => tx.insert(alertasDispensados).values({ ...alertaA(), regraId: 'cartao-alto' })),
+    ).rejects.toThrow()
+  })
+
+  it('B não altera nem apaga config e alertas de A', async () => {
+    expect(
+      await comUsuario(B, (tx) => tx.update(configOrientador).set({ altaPct: 99 }).where(eq(configOrientador.workspaceId, wsA)).returning()),
+    ).toEqual([])
+    expect(await comUsuario(B, (tx) => tx.delete(configOrientador).where(eq(configOrientador.workspaceId, wsA)).returning())).toEqual([])
+    expect(
+      await comUsuario(B, (tx) => tx.update(alertasDispensados).set({ severidade: 'info' }).where(eq(alertasDispensados.workspaceId, wsA)).returning()),
+    ).toEqual([])
+    expect(await comUsuario(B, (tx) => tx.delete(alertasDispensados).where(eq(alertasDispensados.workspaceId, wsA)).returning())).toEqual([])
+    const [c] = await comUsuario(A, (tx) => tx.select().from(configOrientador))
+    expect(c.limiteCategoriaPct).toBe(20)
+    expect(await comUsuario(A, (tx) => tx.select().from(alertasDispensados))).toHaveLength(1)
+  })
+
+  it('sem comUsuario nada é visível (falha fechado)', async () => {
+    expect(await db.select().from(configOrientador)).toEqual([])
+    expect(await db.select().from(alertasDispensados)).toEqual([])
+  })
+
+  it('checks: percentuais fora da faixa, severidade inválida, mês fora do dia 1, chave longa dão 23514', async () => {
+    const viola = (p: Promise<unknown>) => expect(p).rejects.toMatchObject({ cause: { code: '23514' } })
+    const upd = (v: Partial<typeof configOrientador.$inferInsert>) =>
+      comUsuario(A, (tx) => tx.update(configOrientador).set(v).where(eq(configOrientador.workspaceId, wsA)))
+    await viola(upd({ limiteCategoriaPct: 0 }))
+    await viola(upd({ limiteCategoriaPct: 101 }))
+    await viola(upd({ altaPct: 0 }))
+    await viola(upd({ altaPct: 501 }))
+    await viola(upd({ cartaoPct: 0 }))
+    await viola(upd({ cartaoPct: 101 }))
+    await comUsuario(A, (tx) => tx.update(configOrientador).set({ altaPct: 500, limiteCategoriaPct: 100, cartaoPct: 1 }).where(eq(configOrientador.workspaceId, wsA)))
+    await viola(comUsuario(A, (tx) => tx.insert(alertasDispensados).values({ ...alertaA(), regraId: 'x1', severidade: 'grave' })))
+    await viola(comUsuario(A, (tx) => tx.insert(alertasDispensados).values({ ...alertaA(), regraId: 'x2', mes: '2026-10-15' })))
+    await viola(comUsuario(A, (tx) => tx.insert(alertasDispensados).values({ ...alertaA(), regraId: 'x3', chave: 'a'.repeat(65) })))
+    await viola(comUsuario(A, (tx) => tx.insert(alertasDispensados).values({ ...alertaA(), regraId: '' })))
+  })
+
+  it('PK (workspace, regra, chave, mês): repetir a mesma dispensa dá 23505', async () => {
+    await expect(comUsuario(A, (tx) => tx.insert(alertasDispensados).values(alertaA()))).rejects.toMatchObject({
+      cause: { code: '23505' },
+    })
   })
 })
