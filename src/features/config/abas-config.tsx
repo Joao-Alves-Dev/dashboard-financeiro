@@ -10,11 +10,13 @@ export function AbasConfig({
   contas,
   categorias,
   regras,
+  orientador,
 }: {
   inicial: Aba
   contas: ReactNode
   categorias: ReactNode
   regras: ReactNode
+  orientador: ReactNode
 }) {
   const t = useTranslations('config.abas')
   const [aba, setAba] = useState<string>(inicial)
@@ -35,6 +37,9 @@ export function AbasConfig({
       </TabsContent>
       <TabsContent value="regras" className="pt-2">
         {regras}
+      </TabsContent>
+      <TabsContent value="orientador" className="pt-2">
+        {orientador}
       </TabsContent>
     </Tabs>
   )

@@ -11,6 +11,7 @@ import { OrcamentoResumoBloco } from '@/features/dashboard/orcamento-resumo'
 import { UltimosLancamentosBloco } from '@/features/dashboard/ultimos-lancamentos'
 import { APagarReceberBloco } from '@/features/dashboard/a-pagar-receber'
 import { MetasResumoBloco } from '@/features/metas/metas-resumo'
+import { AlertasResumoBloco } from '@/features/orientador/card-alertas'
 import { DashboardVazio } from '@/features/dashboard/vazio'
 import { BotaoVoz } from '@/features/voz/botao-voz'
 import { obterExisteLancamento } from '@/features/dashboard/queries'
@@ -64,6 +65,11 @@ export default async function PaginaWorkspace({ params }: PageProps<'/w/[id]'>) 
           PONTO DE EXTENSÃO: novos cards entram aqui, cada um em <Suspense> próprio, usando CardDashboard.
           Task 16 adiciona o card de alertas do orientador (`lg:col-span-2` para largura total).
         */}
+        <div className="lg:col-span-2">
+          <Suspense fallback={<CardCarregando titulo={carregando} />}>
+            <AlertasResumoBloco ws={ws.id} hoje={hoje} />
+          </Suspense>
+        </div>
         <div className="lg:col-span-2">
           <Suspense fallback={<CardCarregando titulo={carregando} />}>
             <MetasResumoBloco ws={ws.id} hoje={hoje} />

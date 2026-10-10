@@ -5,6 +5,8 @@ import { CategoriasConfig } from '@/features/config/categorias-config'
 import { ContasConfig } from '@/features/config/contas-config'
 import { listarCategorias, listarContas, listarRegras } from '@/features/config/queries'
 import { RegrasConfig } from '@/features/config/regras-config'
+import { ConfigOrientadorForm } from '@/features/orientador/config-orientador'
+import { obterConfigOrientador } from '@/features/orientador/queries'
 import { obterWorkspace } from '@/features/workspaces/queries'
 
 export default async function PaginaConfig({ params, searchParams }: PageProps<'/w/[id]/config'>) {
@@ -12,10 +14,11 @@ export default async function PaginaConfig({ params, searchParams }: PageProps<'
   const ws = await obterWorkspace(id)
   const { aba } = await searchParams
   const inicial: Aba = ABAS.find((a) => a === aba) ?? 'contas'
-  const [contas, categorias, regras, t] = await Promise.all([
+  const [contas, categorias, regras, configOrientador, t] = await Promise.all([
     listarContas(ws.id),
     listarCategorias(ws.id),
     listarRegras(ws.id),
+    obterConfigOrientador(ws.id),
     getTranslations('config'),
   ])
 
@@ -27,6 +30,7 @@ export default async function PaginaConfig({ params, searchParams }: PageProps<'
         contas={<ContasConfig workspaceId={ws.id} contas={contas} />}
         categorias={<CategoriasConfig workspaceId={ws.id} categorias={categorias} />}
         regras={<RegrasConfig workspaceId={ws.id} regras={regras} categorias={categorias} />}
+        orientador={<ConfigOrientadorForm workspaceId={ws.id} config={configOrientador} />}
       />
     </section>
   )

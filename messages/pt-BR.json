@@ -194,7 +194,8 @@
     "abas": {
       "contas": "Contas",
       "categorias": "Categorias",
-      "regras": "Regras"
+      "regras": "Regras",
+      "orientador": "Orientador"
     },
     "contas": {
       "titulo": "Contas",
@@ -706,5 +707,73 @@
     "erroBuscar": "Não consegui buscar as transações. Tente de novo.",
     "tituloCompartilhar": "Transações efetuadas | {nome}",
     "quantidade": "{n, plural, one {# transação} other {# transações}}"
+  },
+  "orientador": {
+    "titulo": "Orientações",
+    "descricao": "Alertas calculados com os seus números do mês e textos curtos para entender cada assunto.",
+    "alertas": {
+      "titulo": "Alertas do mês",
+      "vazioTitulo": "Tudo em ordem por enquanto",
+      "vazioTexto": "Nenhum alerta ativo agora. Continue registrando seus lançamentos para o orientador acompanhar.",
+      "entender": "Entender",
+      "entenderAria": "Entender: {titulo}",
+      "dispensar": "Dispensar",
+      "dispensando": "Dispensando…",
+      "dispensarAria": "Dispensar alerta: {titulo}",
+      "dispensarDica": "Dispensar esconde o alerta até o fim do mês. Ele volta antes se ficar mais grave.",
+      "severidade": {
+        "critico": "Crítico",
+        "atencao": "Atenção",
+        "info": "Informação",
+        "positivo": "Bom sinal"
+      }
+    },
+    "biblioteca": {
+      "titulo": "Aprenda",
+      "descricao": "Textos curtos, sem jargão, sobre organizar o dinheiro, guardar, dívidas e noções de investimento.",
+      "buscaRotulo": "Buscar nos textos",
+      "buscaDica": "Digite um assunto, por exemplo cartão",
+      "limpar": "Limpar busca",
+      "nenhum": "Nenhum texto encontrado para \"{termo}\".",
+      "resultados": "{n, plural, =0 {Nenhum texto} one {# texto encontrado} other {# textos encontrados}}",
+      "temas": {
+        "orcamento": "Orçamento",
+        "guardar": "Guardar dinheiro",
+        "dividas": "Dívidas",
+        "investir": "Investir (noções básicas)"
+      }
+    },
+    "dica": {
+      "voltar": "Voltar às orientações"
+    },
+    "dashboard": {
+      "titulo": "Orientador",
+      "descricao": "Os alertas mais importantes agora",
+      "verTodas": "Ver todas as orientações",
+      "vazioTitulo": "Tudo em ordem por enquanto",
+      "vazioTexto": "Nenhum alerta ativo. Veja a biblioteca Aprenda para aprender mais."
+    },
+    "config": {
+      "titulo": "Orientador",
+      "descricao": "Defina quando o orientador deve avisar. Os percentuais são calculados sobre a renda do mês (entradas efetivadas).",
+      "limiteCategoria": "Categoria acima de (% da renda)",
+      "limiteCategoriaDica": "Avisa quando uma categoria passa desse percentual da renda do mês. Padrão: 15.",
+      "alta": "Categoria acima da média em (%)",
+      "altaDica": "Avisa quando uma categoria passa da média dos 3 meses anteriores por mais que isso. Padrão: 30.",
+      "cartao": "Cartão acima de (% da renda)",
+      "cartaoDica": "Avisa quando os gastos em contas do tipo cartão passam desse percentual da renda. Padrão: 30.",
+      "salvar": "Salvar limites",
+      "restaurar": "Restaurar padrões",
+      "salvo": "Limites salvos.",
+      "restaurado": "Padrões restaurados."
+    },
+    "validacao": {
+      "inteiro": "Informe um número inteiro.",
+      "faixa100": "Use um valor de 1 a 100.",
+      "faixa500": "Use um valor de 1 a 500."
+    },
+    "erros": {
+      "regraInvalida": "Alerta inválido."
+    }
   }
 }
