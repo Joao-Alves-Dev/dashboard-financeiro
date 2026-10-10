@@ -409,6 +409,7 @@ Pré-requisito: usuário cria o projeto Neon `financeiro-portfolio`; `npm run db
 - [ ] **Step 2:** `importacao.spec.ts`: demo → Importar → upload `nubank.ofx` → prévia com N linhas → confirmar → lançamento aparece em Lançamentos → Desfazer → some.
 - [ ] **Step 3:** `npx playwright test` contra `npm run build && npm start` → PASS.
 - [ ] **Step 4:** README estudo de caso: problema, decisões (RLS, centavos, dedupe por FITID/hash, demo isolada), como rodar, prints, GIF, link Vercel.
+- [ ] **Step 4b (pendência da Task 15):** investigar e corrigir a rolagem horizontal de ~8px observada a 375px no painel do workspace (`scrollWidth` 379 vs `innerWidth` 371), que persiste com o botão de voz oculto, então vem de outro elemento; achar o elemento que excede com JS (`[...document.querySelectorAll('*')].filter(e => e.getBoundingClientRect().right > innerWidth)`), corrigir e adicionar um teste Playwright mobile (375px) de "sem overflow horizontal" nas páginas principais.
 - [ ] **Step 5:** Deploy de produção; checar demo no celular. Commit `docs: README e e2e`.
 
 ## Verificação end-to-end
