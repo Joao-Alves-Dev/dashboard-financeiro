@@ -7,11 +7,28 @@ import { Button } from '@/components/ui/button'
 import { LancamentoRapido, type ValoresIniciaisRapido } from './lancamento-rapido'
 import type { OpcaoCategoria, OpcaoConta } from './form-lancamento'
 
-type Contexto = { abrir: (iniciais?: ValoresIniciaisRapido) => void }
+/** Dados do workspace que a voz reaproveita (já carregados no layout; nada novo é buscado). */
+export type DadosRapido = {
+  workspaceId: string
+  contas: OpcaoConta[]
+  categorias: OpcaoCategoria[]
+  favorecidos: string[]
+  contaPadraoId: string | null
+}
+
+type Contexto = {
+  abrir: (iniciais?: ValoresIniciaisRapido) => void
+  /** Mostra a confirmação (`role=status`) usada após salvar, pelo rápido e pela voz. */
+  avisar: (mensagem: string) => void
+  /** Inicia o fluxo de voz (registrado pelo `VozProvider`); sem voz registrada, não faz nada. */
+  iniciarVoz: () => void
+  registrarVoz: (iniciar: (() => void) | null) => void
+  dados: DadosRapido
+}
 
 const Ctx = createContext<Contexto | null>(null)
 
-/** Abre o lançamento rápido (barra inferior, botão do desktop e, na Task 15, a voz com valores pré-preenchidos). */
+/** Abre o lançamento rápido (barra inferior, botão do desktop e a voz, com valores pré-preenchidos). */
 export function useLancamentoRapido(): Contexto {
   const c = useContext(Ctx)
   if (!c) throw new Error('useLancamentoRapido fora do LancamentoRapidoProvider')
@@ -54,7 +71,23 @@ export function LancamentoRapidoProvider({ children, ...dados }: Props) {
     [],
   )
 
-  const valor = useMemo(() => ({ abrir }), [abrir])
+  const vozRef = useRef<(() => void) | null>(null)
+  const registrarVoz = useCallback((f: (() => void) | null) => {
+    vozRef.current = f
+  }, [])
+  const iniciarVoz = useCallback(() => vozRef.current?.(), [])
+
+  const { workspaceId, contas, categorias, favorecidos, contaPadraoId } = dados
+  const valor = useMemo(
+    () => ({
+      abrir,
+      avisar: mostrarAviso,
+      iniciarVoz,
+      registrarVoz,
+      dados: { workspaceId, contas, categorias, favorecidos, contaPadraoId },
+    }),
+    [abrir, mostrarAviso, iniciarVoz, registrarVoz, workspaceId, contas, categorias, favorecidos, contaPadraoId],
+  )
 
   return (
     <Ctx.Provider value={valor}>
@@ -66,6 +99,7 @@ export function LancamentoRapidoProvider({ children, ...dados }: Props) {
         aberto={aberto}
         aoMudar={setAberto}
         aoSalvar={mostrarAviso}
+        aoFalar={iniciarVoz}
       />
       {/* Região sempre presente para leitores de tela anunciarem a confirmação; visível acima da barra inferior. */}
       <div

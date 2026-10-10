@@ -12,6 +12,7 @@ import { UltimosLancamentosBloco } from '@/features/dashboard/ultimos-lancamento
 import { APagarReceberBloco } from '@/features/dashboard/a-pagar-receber'
 import { MetasResumoBloco } from '@/features/metas/metas-resumo'
 import { DashboardVazio } from '@/features/dashboard/vazio'
+import { BotaoVoz } from '@/features/voz/botao-voz'
 import { obterExisteLancamento } from '@/features/dashboard/queries'
 
 export default async function PaginaWorkspace({ params }: PageProps<'/w/[id]'>) {
@@ -26,6 +27,7 @@ export default async function PaginaWorkspace({ params }: PageProps<'/w/[id]'>) 
     return (
       <div className="flex flex-col gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">{t('titulo')}</h1>
+        <BotaoVoz />
         <DashboardVazio ws={ws.id} />
       </div>
     )
@@ -35,6 +37,8 @@ export default async function PaginaWorkspace({ params }: PageProps<'/w/[id]'>) 
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold tracking-tight">{t('titulo')}</h1>
+
+      <BotaoVoz />
 
       <Suspense fallback={<div className="h-28 animate-pulse rounded-xl bg-muted/60" aria-busy="true" aria-label={carregando} />}>
         <KpisBloco ws={ws.id} hoje={hoje} />

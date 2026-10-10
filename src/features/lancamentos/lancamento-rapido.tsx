@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { MicIcon } from 'lucide-react'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -43,6 +44,8 @@ export type PropsLancamentoRapido = ValoresIniciaisRapido & {
   aoMudar: (aberto: boolean) => void
   /** Chamado após salvar, com o texto da confirmação (o provedor o exibe numa região `role=status`). */
   aoSalvar?: (mensagem: string) => void
+  /** Atalho de voz do sheet: o provedor fecha o sheet e inicia o fluxo de voz. */
+  aoFalar?: () => void
 }
 
 const LIMITE_CHIPS = 6
@@ -56,7 +59,23 @@ export function LancamentoRapido(props: PropsLancamentoRapido) {
         className="max-h-[92dvh] gap-0 rounded-t-3xl p-0 pb-[env(safe-area-inset-bottom)] md:inset-x-auto md:left-1/2 md:w-full md:max-w-md md:-translate-x-1/2"
       >
         <SheetHeader className="px-5 pt-5 pb-2">
-          <SheetTitle className="text-lg">{t('titulo')}</SheetTitle>
+          <div className="flex items-center justify-between gap-3 pr-10">
+            <SheetTitle className="text-lg">{t('titulo')}</SheetTitle>
+            {props.aoFalar && props.contas.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 gap-2 px-4 text-base"
+                onClick={() => {
+                  props.aoMudar(false)
+                  props.aoFalar?.()
+                }}
+              >
+                <MicIcon aria-hidden className="size-5" />
+                {t('falar')}
+              </Button>
+            )}
+          </div>
           <SheetDescription className="sr-only">{t('descricao')}</SheetDescription>
         </SheetHeader>
         {/* O Popup desmonta ao fechar, então o formulário reinicia (e relê os valores iniciais) a cada abertura. */}
