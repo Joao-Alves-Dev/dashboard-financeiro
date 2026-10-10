@@ -1,5 +1,5 @@
 /** Tratamentos removidos quando aparecem como primeiros tokens do nome (comparados já normalizados). */
-const TRATAMENTOS = new Set(['senhor', 'senhora', 'sr', 'sra', 'seu', 'dona', 'dr', 'dra', 'doutor', 'doutora'])
+export const TRATAMENTOS = new Set(['senhor', 'senhora', 'sr', 'sra', 'seu', 'dona', 'dr', 'dra', 'doutor', 'doutora'])
 
 /** Tamanho máximo do nome do favorecido (igual ao check do banco). */
 export const FAVORECIDO_MAX = 80

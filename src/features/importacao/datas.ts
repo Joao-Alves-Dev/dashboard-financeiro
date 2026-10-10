@@ -6,7 +6,7 @@ function bissexto(a: number): boolean {
   return (a % 4 === 0 && a % 100 !== 0) || a % 400 === 0
 }
 
-function diasNoMes(a: number, m: number): number {
+export function diasNoMes(a: number, m: number): number {
   if (m === 2) return bissexto(a) ? 29 : 28
   return [4, 6, 9, 11].includes(m) ? 30 : 31
 }
