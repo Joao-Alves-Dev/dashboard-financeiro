@@ -128,6 +128,10 @@ export const lancamentos = pgTable(
     status: text('status').notNull().default('efetivado'),
     idExterno: text('id_externo'),
     importacaoId: uuid('importacao_id'),
+    // Quem recebeu/pagou, como digitado ("Senhor Jeová"); `favorecido_chave` é a forma normalizada
+    // (sem acentos/tratamento) usada para agrupar e filtrar. Ambos nulos ou ambos preenchidos.
+    favorecido: text('favorecido'),
+    favorecidoChave: text('favorecido_chave'),
     // Desempate na ordenação da listagem (data desc, criado_em desc).
     criadoEm: timestamp('criado_em', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -135,6 +139,19 @@ export const lancamentos = pgTable(
     check('lancamentos_status_check', sql`${t.status} in ('efetivado', 'pendente')`),
     unique('lancamentos_conta_id_externo_unique').on(t.contaId, t.idExterno),
     index('lancamentos_workspace_data_idx').on(t.workspaceId, t.data),
+    index('lancamentos_workspace_favorecido_data_idx').on(t.workspaceId, t.favorecidoChave, t.data),
+    check(
+      'lancamentos_favorecido_check',
+      sql`${t.favorecido} is null or char_length(${t.favorecido}) between 1 and 80`,
+    ),
+    check(
+      'lancamentos_favorecido_chave_check',
+      sql`${t.favorecidoChave} is null or char_length(${t.favorecidoChave}) between 1 and 80`,
+    ),
+    check(
+      'lancamentos_favorecido_consistente_check',
+      sql`(${t.favorecido} is null) = (${t.favorecidoChave} is null)`,
+    ),
     foreignKey({
       name: 'lancamentos_workspace_conta_fk',
       columns: [t.workspaceId, t.contaId],
