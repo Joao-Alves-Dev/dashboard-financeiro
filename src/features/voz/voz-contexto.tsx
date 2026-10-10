@@ -6,6 +6,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { hojeLocal } from '@/lib/formato'
 import { useLancamentoRapido } from '@/features/lancamentos/lancamento-rapido-contexto'
 import type { Regra } from '@/features/importacao/aplicar-regras'
+import { normalizarFavorecido } from '@/features/favorecido/normalizar'
 import { calarFala, falar } from './falar'
 import { resolverPeriodo } from '@/features/exportacao/periodos'
 import type { TipoExportacao } from '@/features/exportacao/relatorio'
@@ -53,19 +54,28 @@ export function useVoz(): Contexto {
  */
 export function VozProvider({ regras, children }: { regras: Regra[]; children: React.ReactNode }) {
   const t = useTranslations('voz')
-  const { registrarVoz } = useLancamentoRapido()
+  const { registrarVoz, dados } = useLancamentoRapido()
   const rec = useReconhecimento()
   const [fase, setFase] = useState<Fase>({ tipo: 'fechado' })
   const [finalVisto, setFinalVisto] = useState<string | null>(null)
   const [erroVisto, setErroVisto] = useState<string | null>(null)
   const [retido, setRetido] = useState<Retido | null>(null)
 
+  // Favorecidos já cadastrados (os mesmos do <datalist>): o nome falado é reconhecido contra eles.
+  const opcoes = useMemo(() => {
+    const vistos = new Set<string>()
+    const favorecidosConhecidos = dados.favorecidos
+      .map((nome) => ({ chave: normalizarFavorecido(nome), nome }))
+      .filter((f) => f.chave !== '' && !vistos.has(f.chave) && vistos.add(f.chave))
+    return { favorecidosConhecidos }
+  }, [dados.favorecidos])
+
   // Toda frase passa por `interpretarComando`: pedido de lista segue o fluxo de exportação; qualquer
   // outra coisa é lançamento (fluxo anterior, intacto).
   const processar = useCallback(
     (texto: string) => {
       const hoje = hojeLocal()
-      const cmd = interpretarComando(texto, hoje)
+      const cmd = interpretarComando(texto, hoje, opcoes)
       if (cmd.tipo === 'exportar') {
         setRetido(null)
         setFase({ tipo: 'exportando', cmd, texto })
@@ -89,19 +99,19 @@ export function VozProvider({ regras, children }: { regras: Regra[]; children: R
           return
         }
         // Nem período nem lançamento: continua perguntando o período.
-        if (!interpretarFala(texto, hoje).ok) {
+        if (!interpretarFala(texto, hoje, opcoes).ok) {
           setFase({ tipo: 'periodo', favorecido: retido.favorecido, texto })
           return
         }
         setRetido(null)
       }
-      const r = interpretarFala(texto, hoje)
+      const r = interpretarFala(texto, hoje, opcoes)
       if (r.ok) setFase({ tipo: 'confirmando', fala: r, texto })
       else if (r.motivo === 'sem_valor') {
         setFase({ tipo: 'erro', mensagem: t('naoEntendiValor'), texto, falarMensagem: true })
       } else setFase({ tipo: 'erro', mensagem: t('naoEntendiVazio'), texto: null, falarMensagem: false })
     },
-    [t, retido],
+    [t, retido, opcoes],
   )
 
   // Reage ao resultado do reconhecimento durante a renderização (padrão "ajustar estado conforme props").

@@ -1,6 +1,7 @@
 import { parseValorBR } from '@/lib/money'
 import { TRATAMENTOS } from '@/features/favorecido/normalizar'
 import { diaMesParaData, numeroDoMes, somarDias } from './datas-fala'
+import { resolverFavorecidoConhecido, type OpcoesInterpretacao } from './favorecido-conhecido'
 import { ehPalavraNumerica, extensoParaNumero, semAcento } from './numeros-extenso'
 
 export type FalaInterpretada =
@@ -255,9 +256,10 @@ export function lerNome(t: Tok[], inicio: number, pulaArtigo: boolean): string |
 /**
  * Interpreta a frase reconhecida pela voz. Função pura: `hoje` é 'YYYY-MM-DD' e todas as datas
  * são calculadas por aritmética de string. Palavras-chave ignoram acento e maiúsculas; descrição e
- * favorecido preservam os acentos originais.
+ * favorecido preservam os acentos originais. Com `opcoes.favorecidosConhecidos`, o favorecido extraído é
+ * reconhecido contra os nomes já cadastrados (ver `resolverFavorecidoConhecido`); a descrição não muda.
  */
-export function interpretarFala(texto: string, hoje: string): FalaInterpretada {
+export function interpretarFala(texto: string, hoje: string, opcoes?: OpcoesInterpretacao): FalaInterpretada {
   const t = tokenizar(texto)
   if (t.length === 0) return { ok: false, motivo: 'vazio' }
 
@@ -316,6 +318,8 @@ export function interpretarFala(texto: string, hoje: string): FalaInterpretada {
     valorCentavos: entrada ? q.centavos : -q.centavos,
     descricao,
     data,
-    ...(favorecido ? { favorecido } : {}),
+    ...(favorecido
+      ? { favorecido: resolverFavorecidoConhecido(favorecido, opcoes?.favorecidosConhecidos ?? []) }
+      : {}),
   }
 }

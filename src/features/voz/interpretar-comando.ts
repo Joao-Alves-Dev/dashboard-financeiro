@@ -1,5 +1,6 @@
 import { palavrasDoPeriodo, periodoNosTokens } from '@/features/exportacao/periodos'
 import type { TipoExportacao } from '@/features/exportacao/relatorio'
+import { resolverFavorecidoConhecido, type OpcoesInterpretacao } from './favorecido-conhecido'
 import { lerNome, tokenizar } from './interpretar-fala'
 
 export type Comando =
@@ -47,9 +48,10 @@ const INTRODUTORES_NOME = new Map([
  * Favorecido x período: o período é removido primeiro, junto com a preposição que o antecede
  * ("de 29 de setembro", "do mês passado", "deste mês"); só então se procura "para/pra/pro/do/da/de"
  * seguido de nome. Assim, "de" + número ou mês é sempre período, e "de João" é favorecido. O nome sai
- * com capitalização de nome próprio e sem tratamento, como no lançamento por voz.
+ * com capitalização de nome próprio e sem tratamento, como no lançamento por voz. Com
+ * `opcoes.favorecidosConhecidos`, é reconhecido contra os nomes cadastrados (`resolverFavorecidoConhecido`).
  */
-export function interpretarComando(texto: string, hoje: string): Comando {
+export function interpretarComando(texto: string, hoje: string, opcoes?: OpcoesInterpretacao): Comando {
   const t = tokenizar(texto)
   const ls = t.map((x) => x.l)
   const exporta =
@@ -74,6 +76,7 @@ export function interpretarComando(texto: string, hoje: string): Comando {
     if (t[i].rem || pulaArtigo === undefined) continue
     favorecido = lerNome(t, i + 1, pulaArtigo) ?? ''
   }
+  if (favorecido) favorecido = resolverFavorecidoConhecido(favorecido, opcoes?.favorecidosConhecidos ?? [])
 
   if (!periodo) return { tipo: 'exportar_incompleto', falta: 'periodo', favorecido, filtroTipo }
   return { tipo: 'exportar', favorecido, de: periodo.de, ate: periodo.ate, filtroTipo }
