@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { dataPorExtenso, diaMesParaData, numeroDoMes, somarDias } from './datas-fala'
+import { dataPorExtenso, diaDaSemana, diaMesParaData, numeroDoMes, somarDias } from './datas-fala'
+
+describe('diaDaSemana', () => {
+  it('0 domingo ... 6 sábado', () => {
+    expect(diaDaSemana('2026-10-08')).toBe(4) // quinta
+    expect(diaDaSemana('2026-10-04')).toBe(0) // domingo
+    expect(diaDaSemana('2026-10-10')).toBe(6) // sábado
+    expect(diaDaSemana('1970-01-01')).toBe(4)
+    expect(diaDaSemana('1969-12-31')).toBe(3)
+    expect(diaDaSemana('2024-02-29')).toBe(4)
+  })
+})
 
 describe('somarDias', () => {
   it('atravessa mês e ano sem fuso', () => {

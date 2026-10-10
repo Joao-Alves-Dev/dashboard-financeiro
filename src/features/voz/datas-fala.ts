@@ -53,6 +53,12 @@ export function somarDias(iso: string, n: number): string {
   return `${String(r.a).padStart(4, '0')}-${String(r.m).padStart(2, '0')}-${String(r.d).padStart(2, '0')}`
 }
 
+/** Dia da semana de uma data 'YYYY-MM-DD': 0 domingo ... 6 sábado (1970-01-01 foi quinta). */
+export function diaDaSemana(iso: string): number {
+  const { a, m, d } = partes(iso)
+  return (((paraDias(a, m, d) + 4) % 7) + 7) % 7
+}
+
 /**
  * Resolve "dia N", "dia N de <mês>" e "dia N de <mês> de <ano>" em relação a `hoje`.
  *  - Sem mês: mês corrente; se o dia ainda não chegou (N > dia de hoje), vale o mês anterior mais

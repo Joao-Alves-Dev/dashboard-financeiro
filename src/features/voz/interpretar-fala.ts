@@ -11,7 +11,7 @@ export const DESCRICAO_PADRAO = 'Lançamento por voz'
 const DESCRICAO_MAX = 200
 const FAVORECIDO_MAX = 80
 
-type Tok = {
+export type Tok = {
   /** Palavra como falada (acentos, maiúsculas e pontuação preservados). */
   orig: string
   /** Minúsculas, sem acento e sem pontuação nas pontas ("R$" mantém o cifrão). */
@@ -22,7 +22,7 @@ type Tok = {
 
 const PONTAS = /^[^\p{L}\p{N}$]+|[^\p{L}\p{N}$]+$/gu
 
-function tokenizar(texto: string): Tok[] {
+export function tokenizar(texto: string): Tok[] {
   return (texto.normalize('NFC').match(/\S+/g) ?? []).map((orig) => ({
     orig,
     l: semAcento(orig).replace(PONTAS, ''),
@@ -118,7 +118,7 @@ function lerPequeno(t: Tok[], k: number): { valor: number; fim: number } | null 
   return e && e.valor < 1000 && !e.temMil ? { valor: e.valor, fim: e.fim } : null
 }
 
-const livre = (t: Tok[], i: number): Tok | undefined => (t[i] && !t[i].rem ? t[i] : undefined)
+export const livre = (t: Tok[], i: number): Tok | undefined => (t[i] && !t[i].rem ? t[i] : undefined)
 
 function lerQuantia(t: Tok[], i: number): Quantia | null {
   if (t[i].rem) return null
@@ -230,7 +230,7 @@ export function capitalizarNome(palavras: string[]): string {
     .join(' ')
 }
 
-function lerNome(t: Tok[], inicio: number, pulaArtigo: boolean): string | null {
+export function lerNome(t: Tok[], inicio: number, pulaArtigo: boolean): string | null {
   let i = inicio
   if (pulaArtigo && livre(t, i) && ARTIGOS.has(t[i].l) && i + 1 < t.length) i++
   while (livre(t, i) && TRATAMENTOS.has(t[i].l)) i++
