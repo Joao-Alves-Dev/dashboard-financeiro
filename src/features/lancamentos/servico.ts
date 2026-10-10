@@ -1,7 +1,8 @@
 import 'server-only'
-import { and, asc, count, desc, eq, gte, ilike, inArray, lt, lte, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, ilike, inArray, lt, lte, or, sql, type SQL } from 'drizzle-orm'
 import { comUsuario } from '@/db/com-usuario'
 import { categorias, lancamentos } from '@/db/schema'
+import { normalizarFavorecido } from '@/features/favorecido/normalizar'
 import { ErroDominio } from '@/lib/erro-dominio'
 import { ehUuid } from '@/lib/uuid'
 import { janelaCategoriasFrequentes } from './categorias-frequentes'
@@ -24,7 +25,17 @@ export async function listarLancamentosDoUsuario(
   if (f.ate) condicoes.push(lte(lancamentos.data, f.ate))
   if (f.contaId) condicoes.push(eq(lancamentos.contaId, f.contaId))
   if (f.categoriaId) condicoes.push(eq(lancamentos.categoriaId, f.categoriaId))
-  if (f.texto) condicoes.push(ilike(lancamentos.descricao, `%${escaparLike(f.texto)}%`))
+  if (f.texto) {
+    const padrao = `%${escaparLike(f.texto)}%`
+    // Texto livre acha também pelo nome do favorecido.
+    condicoes.push(or(ilike(lancamentos.descricao, padrao), ilike(lancamentos.favorecido, padrao)))
+  }
+  if (f.favorecidoChave !== undefined) {
+    // Aceita a chave ou o nome como digitado ("senhor Jeová" → "jeova"). Chave vazia (ex.: só
+    // "senhor") não casa com nada em vez de ser ignorada.
+    const chave = normalizarFavorecido(f.favorecidoChave)
+    condicoes.push(chave ? eq(lancamentos.favorecidoChave, chave) : sql`false`)
+  }
   const where = and(...condicoes)
 
   return comUsuario(userId, async (tx) => {
@@ -56,6 +67,8 @@ export async function criarLancamentoDoUsuario(
         descricao: d.descricao,
         valorCentavos: d.valorCentavos,
         status: d.status,
+        favorecido: d.favorecido,
+        favorecidoChave: d.favorecidoChave,
       })
       .returning()
     return l
@@ -78,6 +91,9 @@ export async function editarLancamentoDoUsuario(
         descricao: d.descricao,
         valorCentavos: d.valorCentavos,
         status: d.status,
+        // Vazio ao editar limpa os dois campos.
+        favorecido: d.favorecido,
+        favorecidoChave: d.favorecidoChave,
       })
       .where(and(eq(lancamentos.id, id), eq(lancamentos.workspaceId, ws)))
       .returning()

@@ -65,7 +65,8 @@
     "padraoObrigatorio": "Informe o texto a procurar.",
     "padraoLongo": "O texto pode ter no máximo 100 caracteres.",
     "categoriaObrigatoria": "Escolha a categoria.",
-    "prioridadeInvalida": "A prioridade precisa ser um número inteiro."
+    "prioridadeInvalida": "A prioridade precisa ser um número inteiro.",
+    "favorecidoLongo": "O nome pode ter no máximo 80 caracteres."
   },
   "login": {
     "titulo": "Entrar",
@@ -128,10 +129,12 @@
       "ate": "Até",
       "conta": "Conta",
       "categoria": "Categoria",
-      "texto": "Descrição",
-      "textoPlaceholder": "Buscar na descrição",
+      "texto": "Descrição ou favorecido",
+      "textoPlaceholder": "Buscar na descrição ou no favorecido",
       "aplicar": "Filtrar",
-      "limpar": "Limpar"
+      "limpar": "Limpar",
+      "favorecido": "Favorecido",
+      "favorecidoTodos": "Todos"
     },
     "campos": {
       "valor": "Valor",
@@ -141,7 +144,11 @@
       "conta": "Conta",
       "categoria": "Categoria",
       "status": "Status",
-      "valorDica": "Ex.: 1.234,56"
+      "valorDica": "Ex.: 1.234,56",
+      "favorecido": "Para quem / De quem",
+      "favorecidoSaida": "Para quem",
+      "favorecidoEntrada": "De quem",
+      "favorecidoDica": "Opcional. Ex.: Jeová"
     },
     "tipo": {
       "entrada": "Entrada",
@@ -170,12 +177,15 @@
       "conta": "Conta",
       "categoria": "Categoria",
       "valor": "Valor",
-      "status": "Status"
+      "status": "Status",
+      "favorecido": "Favorecido"
     },
     "naoEncontrado": "Lançamento não encontrado.",
     "loteVazio": "Selecione ao menos um lançamento.",
     "loteGrande": "Selecione no máximo {max} lançamentos por vez.",
-    "loteInvalido": "Algum lançamento selecionado não pertence a este workspace. Nada foi alterado."
+    "loteInvalido": "Algum lançamento selecionado não pertence a este workspace. Nada foi alterado.",
+    "favorecidoSugestoes": "Nomes já usados",
+    "favorecidoLinha": "{tipo, select, entrada {De} other {Para}}: {nome}"
   },
   "config": {
     "titulo": "Configurações",
@@ -562,6 +572,8 @@
     "semContaTitulo": "Nenhuma conta cadastrada",
     "semContaTexto": "Todo lançamento pertence a uma conta. Crie a primeira em Configurações.",
     "semContaLink": "Criar conta",
-    "semCategorias": "Sem categorias"
+    "semCategorias": "Sem categorias",
+    "favorecidoLinkSaida": "Para quem?",
+    "favorecidoLinkEntrada": "De quem?"
   }
 }

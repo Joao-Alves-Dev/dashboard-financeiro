@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { CampoFavorecido } from '@/features/favorecido/campo-favorecido'
 import { hojeLocal } from '@/lib/formato'
 import { formatarBRL, parseValorBR } from '@/lib/money'
 import { criarLancamento } from './actions'
@@ -23,6 +24,8 @@ export type ValoresIniciaisRapido = {
   dataInicial?: string
   categoriaIdInicial?: string | null
   contaIdInicial?: string | null
+  /** Nome do favorecido (voz); se vier preenchido, o campo já abre expandido. */
+  favorecidoInicial?: string
 }
 
 export type PropsLancamentoRapido = ValoresIniciaisRapido & {
@@ -32,6 +35,8 @@ export type PropsLancamentoRapido = ValoresIniciaisRapido & {
   categorias: OpcaoCategoria[]
   /** Categorias de despesa mais usadas (chips da saída). */
   frequentes: OpcaoCategoria[]
+  /** Nomes de favorecidos já usados (autocomplete). */
+  favorecidos: string[]
   /** Conta padrão já validada no servidor (cookie da última conta usada, senão a primeira). */
   contaPadraoId: string | null
   aberto: boolean
@@ -87,6 +92,7 @@ function Corpo({
   contas,
   categorias,
   frequentes,
+  favorecidos,
   contaPadraoId,
   valorInicial,
   tipoInicial,
@@ -94,6 +100,7 @@ function Corpo({
   dataInicial,
   categoriaIdInicial,
   contaIdInicial,
+  favorecidoInicial,
   aoMudar,
   aoSalvar,
 }: PropsLancamentoRapido) {
@@ -108,6 +115,9 @@ function Corpo({
   )
   const [categoriaId, setCategoriaId] = useState<string | null>(categoriaIdInicial ?? null)
   const [todas, setTodas] = useState(false)
+  // Campo opcional, recolhido por padrão para manter o fluxo de 2 toques; um link o expande.
+  const [favorecido, setFavorecido] = useState(favorecidoInicial ?? '')
+  const [favorecidoAberto, setFavorecidoAberto] = useState(Boolean(favorecidoInicial?.trim()))
   const [erro, setErro] = useState<string | null>(null)
   const [campos, setCampos] = useState<Record<string, string>>({})
   const [pendente, iniciar] = useTransition()
@@ -153,6 +163,7 @@ function Corpo({
       contaId,
       categoriaId: categoriaId ?? '',
       status: 'efetivado' as const,
+      favorecido,
     }
     iniciar(async () => {
       const r = await criarLancamento(workspaceId, entrada)
@@ -260,6 +271,28 @@ function Corpo({
           />
           {campos.descricao && <p className="text-sm text-destructive">{campos.descricao}</p>}
         </div>
+
+        {favorecidoAberto ? (
+          <CampoFavorecido
+            id="rapido-favorecido"
+            tipo={tipo}
+            valor={favorecido}
+            aoMudar={setFavorecido}
+            sugestoes={favorecidos}
+            erro={campos.favorecido}
+            autoFocus={!favorecidoInicial}
+            className="h-11 text-base"
+          />
+        ) : (
+          <button
+            type="button"
+            aria-expanded={false}
+            onClick={() => setFavorecidoAberto(true)}
+            className="-mt-2 min-h-11 self-start rounded-md px-1 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
+            {tipo === 'saida' ? t('favorecidoLinkSaida') : t('favorecidoLinkEntrada')}
+          </button>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">

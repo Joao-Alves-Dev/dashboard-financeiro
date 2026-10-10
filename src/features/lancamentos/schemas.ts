@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { FAVORECIDO_MAX, limparFavorecido } from '@/features/favorecido/normalizar'
 import { normalizarDataBR } from '@/features/importacao/datas'
 import { parseValorBR } from '@/lib/money'
 import { ehUuid } from '@/lib/uuid'
@@ -33,6 +34,23 @@ const uuidOpcional = (msg: string) =>
     .refine((v) => v == null || v === '' || ehUuid(v), msg)
     .transform((v) => (v == null || v === '' ? null : v))
 
+/**
+ * Favorecido opcional: vazio/espaços (ou só tratamento, ex.: "senhor") → ausente (null/null).
+ * A grafia exibida é a digitada (aparada); a chave é a normalizada.
+ */
+const favorecidoSchema = z
+  .string()
+  .nullish()
+  .superRefine((v, ctx) => {
+    if ((v ?? '').trim().replace(/\s+/g, ' ').length > FAVORECIDO_MAX) {
+      ctx.addIssue({ code: 'custom', message: 'validacao.favorecidoLongo' })
+    }
+  })
+  .transform((v) => {
+    const l = limparFavorecido(v ?? '')
+    return { favorecido: l?.favorecido ?? null, favorecidoChave: l?.chave ?? null }
+  })
+
 export const lancamentoSchema = z
   .object({
     valor: valorSchema,
@@ -46,10 +64,11 @@ export const lancamentoSchema = z
     contaId: uuidObrigatorio('validacao.contaObrigatoria'),
     categoriaId: uuidOpcional('validacao.categoriaInvalida'),
     status: z.enum(STATUS_LANCAMENTO, 'validacao.statusInvalido').default('efetivado'),
+    favorecido: favorecidoSchema,
   })
-  .transform(({ valor, tipo, ...resto }) => {
+  .transform(({ valor, tipo, favorecido, ...resto }) => {
     const abs = Math.abs(parseValorBR(valor) as number)
-    return { ...resto, tipo, valorCentavos: tipo === 'saida' ? -abs : abs }
+    return { ...resto, ...favorecido, tipo, valorCentavos: tipo === 'saida' ? -abs : abs }
   })
 
 export type LancamentoInput = z.output<typeof lancamentoSchema>
@@ -64,6 +83,8 @@ export const filtrosSchema = z.object({
   contaId: z.string().refine(ehUuid).optional(),
   categoriaId: z.string().refine(ehUuid).optional(),
   texto: z.string().max(100).optional(),
+  /** Nome digitado ou chave; o serviço compara por `normalizarFavorecido`. */
+  favorecidoChave: z.string().max(FAVORECIDO_MAX).optional(),
   pagina: z.number().int().min(1),
 })
 
@@ -86,6 +107,8 @@ export function lerFiltros(sp: SearchParams): FiltrosLancamentos {
   if (ehUuid(cat)) f.categoriaId = cat
   const texto = primeiro(sp.texto)?.trim().slice(0, 100)
   if (texto) f.texto = texto
+  const fav = primeiro(sp.favorecidoChave)?.trim().slice(0, FAVORECIDO_MAX)
+  if (fav) f.favorecidoChave = fav
   const pag = Number(primeiro(sp.pagina))
   if (Number.isInteger(pag) && pag >= 1) f.pagina = Math.min(pag, 100000)
   return f

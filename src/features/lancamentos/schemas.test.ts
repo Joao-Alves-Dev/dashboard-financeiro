@@ -79,6 +79,27 @@ describe('lancamentoSchema', () => {
   })
 })
 
+describe('favorecido no lancamentoSchema', () => {
+  it('ausente, vazio, espaços ou só tratamento viram null/null', () => {
+    for (const favorecido of [undefined, null, '', '   ', 'Senhor']) {
+      const r = lancamentoSchema.safeParse({ ...base, favorecido })
+      expect(r.success && [r.data.favorecido, r.data.favorecidoChave]).toEqual([null, null])
+    }
+  })
+
+  it('mantém a grafia digitada (aparada) e calcula a chave', () => {
+    const r = lancamentoSchema.safeParse({ ...base, favorecido: '  Senhor   Jeová ' })
+    expect(r.success && [r.data.favorecido, r.data.favorecidoChave]).toEqual(['Senhor Jeová', 'jeova'])
+  })
+
+  it('aceita 80 caracteres e rejeita 81', () => {
+    expect(lancamentoSchema.safeParse({ ...base, favorecido: 'a'.repeat(80) }).success).toBe(true)
+    expect(msgs(lancamentoSchema.safeParse({ ...base, favorecido: 'a'.repeat(81) }))).toContain(
+      'favorecido:validacao.favorecidoLongo',
+    )
+  })
+})
+
 describe('filtros', () => {
   it('lerFiltros ignora valores inválidos e normaliza página', () => {
     expect(lerFiltros({})).toEqual({ pagina: 1 })
@@ -88,6 +109,12 @@ describe('filtros', () => {
     expect(lerFiltros({ pagina: '0' }).pagina).toBe(1)
     expect(lerFiltros({ pagina: 'abc' }).pagina).toBe(1)
     expect(lerFiltros({ texto: ['a', 'b'] }).texto).toBe('a')
+  })
+
+  it('lerFiltros lê favorecidoChave aparado e limitado a 80', () => {
+    expect(lerFiltros({ favorecidoChave: '  senhor Jeová ' }).favorecidoChave).toBe('senhor Jeová')
+    expect(lerFiltros({ favorecidoChave: 'a'.repeat(200) }).favorecidoChave).toHaveLength(80)
+    expect(lerFiltros({ favorecidoChave: '  ' })).toEqual({ pagina: 1 })
   })
 
   it('filtrosSchema aceita objeto completo', () => {

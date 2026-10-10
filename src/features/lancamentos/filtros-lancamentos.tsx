@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { FiltrosLancamentos } from './schemas'
+import type { FavorecidoSugestao } from '@/features/favorecido/servico'
 import type { OpcaoCategoria, OpcaoConta } from './form-lancamento'
 
 const TODAS = '__todas'
@@ -17,10 +18,12 @@ export function FiltrosLancamentosForm({
   filtros,
   contas,
   categorias,
+  favorecidos,
 }: {
   filtros: FiltrosLancamentos
   contas: OpcaoConta[]
   categorias: OpcaoCategoria[]
+  favorecidos: Pick<FavorecidoSugestao, 'chave' | 'nome'>[]
 }) {
   const t = useTranslations('lancamentos.filtros')
   const tc = useTranslations('comum')
@@ -30,12 +33,22 @@ export function FiltrosLancamentosForm({
   const [ate, setAte] = useState(filtros.ate ?? '')
   const [contaId, setContaId] = useState(filtros.contaId ?? TODAS)
   const [categoriaId, setCategoriaId] = useState(filtros.categoriaId ?? TODAS)
+  const [favorecidoChave, setFavorecidoChave] = useState(filtros.favorecidoChave ?? TODAS)
   const [texto, setTexto] = useState(filtros.texto ?? '')
 
   const itensConta = [{ value: TODAS, label: tc('todas') }, ...contas.map((c) => ({ value: c.id, label: c.nome }))]
   const itensCategoria = [
     { value: TODAS, label: tc('todas') },
     ...categorias.map((c) => ({ value: c.id, label: c.nome })),
+  ]
+
+  // Valor vindo da URL que não está na lista (ex.: nome digitado) continua visível e selecionável.
+  const itensFavorecido = [
+    { value: TODAS, label: t('favorecidoTodos') },
+    ...favorecidos.map((f) => ({ value: f.chave, label: f.nome })),
+    ...(filtros.favorecidoChave && !favorecidos.some((f) => f.chave === filtros.favorecidoChave)
+      ? [{ value: filtros.favorecidoChave, label: filtros.favorecidoChave }]
+      : []),
   ]
 
   function aplicar(e: React.FormEvent) {
@@ -45,6 +58,7 @@ export function FiltrosLancamentosForm({
     if (ate) p.set('ate', ate)
     if (contaId !== TODAS) p.set('contaId', contaId)
     if (categoriaId !== TODAS) p.set('categoriaId', categoriaId)
+    if (favorecidoChave !== TODAS) p.set('favorecidoChave', favorecidoChave)
     if (texto.trim()) p.set('texto', texto.trim())
     const qs = p.toString()
     router.push(qs ? `${pathname}?${qs}` : pathname)
@@ -55,6 +69,7 @@ export function FiltrosLancamentosForm({
     setAte('')
     setContaId(TODAS)
     setCategoriaId(TODAS)
+    setFavorecidoChave(TODAS)
     setTexto('')
     router.push(pathname)
   }
@@ -103,7 +118,22 @@ export function FiltrosLancamentosForm({
           </SelectContent>
         </Select>
       </div>
-      <div className="col-span-2 flex flex-col gap-1.5">
+      <div className="col-span-2 flex min-w-0 flex-col gap-1.5">
+        <Label>{t('favorecido')}</Label>
+        <Select value={favorecidoChave} items={itensFavorecido} onValueChange={(v) => setFavorecidoChave(v ?? TODAS)}>
+          <SelectTrigger className="w-full" aria-label={t('favorecido')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {itensFavorecido.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="col-span-2 flex flex-col gap-1.5 md:col-span-6">
         <Label htmlFor="f-texto">{t('texto')}</Label>
         <Input
           id="f-texto"

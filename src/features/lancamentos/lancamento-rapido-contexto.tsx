@@ -23,6 +23,8 @@ type Props = {
   contas: OpcaoConta[]
   categorias: OpcaoCategoria[]
   frequentes: OpcaoCategoria[]
+  /** Nomes de favorecidos já usados (autocomplete do campo opcional). */
+  favorecidos: string[]
   contaPadraoId: string | null
   children: React.ReactNode
 }

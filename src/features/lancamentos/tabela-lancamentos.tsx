@@ -25,10 +25,11 @@ type Props = {
   total: number
   contas: OpcaoConta[]
   categorias: OpcaoCategoria[]
+  favorecidos: string[]
   temFiltro: boolean
 }
 
-export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, contas, categorias, temFiltro }: Props) {
+export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, contas, categorias, favorecidos, temFiltro }: Props) {
   const t = useTranslations('lancamentos')
   const tc = useTranslations('comum')
   const [formAberto, setFormAberto] = useState(false)
@@ -138,6 +139,7 @@ export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, co
                   </TableHead>
                   <TableHead>{t('colunas.data')}</TableHead>
                   <TableHead>{t('colunas.descricao')}</TableHead>
+                  <TableHead>{t('colunas.favorecido')}</TableHead>
                   <TableHead>{t('colunas.conta')}</TableHead>
                   <TableHead>{t('colunas.categoria')}</TableHead>
                   <TableHead className="text-right">{t('colunas.valor')}</TableHead>
@@ -164,6 +166,9 @@ export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, co
                           {t('status.pendente')}
                         </Badge>
                       )}
+                    </TableCell>
+                    <TableCell className="max-w-48">
+                      {l.favorecido ? <span className="line-clamp-2">{l.favorecido}</span> : <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>{nomeConta.get(l.contaId) ?? '—'}</TableCell>
                     <TableCell>{l.categoriaId ? (nomeCategoria.get(l.categoriaId) ?? '—') : <span className="text-muted-foreground">{t('semCategoria')}</span>}</TableCell>
@@ -202,6 +207,11 @@ export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, co
                   />
                   <div className="min-w-0 flex-1">
                     <p className="break-words font-medium">{l.descricao}</p>
+                    {l.favorecido && (
+                      <p className="mt-0.5 break-words text-sm text-muted-foreground">
+                        {t('favorecidoLinha', { tipo: l.valorCentavos > 0 ? 'entrada' : 'saida', nome: l.favorecido })}
+                      </p>
+                    )}
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {formatarDataBR(l.data)} · {nomeConta.get(l.contaId) ?? '—'} ·{' '}
                       {l.categoriaId ? (nomeCategoria.get(l.categoriaId) ?? '—') : t('semCategoria')}
@@ -237,6 +247,7 @@ export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, co
         tipoWorkspace={tipoWorkspace}
         contas={contas}
         categorias={categorias}
+        favorecidos={favorecidos}
         lancamento={emEdicao}
         aberto={formAberto}
         aoMudar={setFormAberto}

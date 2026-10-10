@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CampoFavorecido } from '@/features/favorecido/campo-favorecido'
 import { cn } from '@/lib/utils'
 import { centavosParaCampo, hojeLocal } from '@/lib/formato'
 import { criarLancamento, editarLancamento } from './actions'
@@ -22,6 +23,8 @@ type Props = {
   tipoWorkspace: string
   contas: OpcaoConta[]
   categorias: OpcaoCategoria[]
+  /** Nomes de favorecidos já usados (autocomplete). */
+  favorecidos: string[]
   /** Lançamento em edição; ausente = criação. */
   lancamento?: Lancamento
   aberto: boolean
@@ -44,13 +47,14 @@ export function FormLancamento(props: Props) {
   )
 }
 
-function CorpoForm({ workspaceId, tipoWorkspace, contas, categorias, lancamento, aoMudar }: Props) {
+function CorpoForm({ workspaceId, tipoWorkspace, contas, categorias, favorecidos, lancamento, aoMudar }: Props) {
   const t = useTranslations('lancamentos')
   const tc = useTranslations('comum')
   const [tipo, setTipo] = useState<'entrada' | 'saida'>(lancamento && lancamento.valorCentavos > 0 ? 'entrada' : 'saida')
   const [valor, setValor] = useState(lancamento ? centavosParaCampo(Math.abs(lancamento.valorCentavos)) : '')
   const [data, setData] = useState(lancamento?.data ?? hojeLocal())
   const [descricao, setDescricao] = useState(lancamento?.descricao ?? '')
+  const [favorecido, setFavorecido] = useState(lancamento?.favorecido ?? '')
   const [contaId, setContaId] = useState(lancamento?.contaId ?? (contas.length === 1 ? contas[0].id : ''))
   const [categoriaId, setCategoriaId] = useState(lancamento?.categoriaId ?? SEM_CATEGORIA)
   const [status, setStatus] = useState<'efetivado' | 'pendente'>(
@@ -82,6 +86,7 @@ function CorpoForm({ workspaceId, tipoWorkspace, contas, categorias, lancamento,
       contaId,
       categoriaId: categoriaId === SEM_CATEGORIA ? '' : categoriaId,
       status,
+      favorecido,
     }
     iniciar(async () => {
       const r = lancamento
@@ -158,6 +163,15 @@ function CorpoForm({ workspaceId, tipoWorkspace, contas, categorias, lancamento,
         />
         {campos.descricao && <p className="text-sm text-destructive">{campos.descricao}</p>}
       </div>
+
+      <CampoFavorecido
+        id="lanc-favorecido"
+        tipo={tipo}
+        valor={favorecido}
+        aoMudar={setFavorecido}
+        sugestoes={favorecidos}
+        erro={campos.favorecido}
+      />
 
       <div className="flex flex-col gap-1.5">
         <Label>{t('campos.conta')}</Label>

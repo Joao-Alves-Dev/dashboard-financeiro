@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { buttonVariants } from '@/components/ui/button'
 import { listarCategorias, listarContas } from '@/features/config/queries'
+import { listarFavorecidos } from '@/features/favorecido/queries'
 import { FiltrosLancamentosForm } from '@/features/lancamentos/filtros-lancamentos'
 import { listarLancamentos } from '@/features/lancamentos/queries'
 import { lerFiltros, POR_PAGINA, type FiltrosLancamentos } from '@/features/lancamentos/schemas'
@@ -14,6 +15,7 @@ function hrefPagina(base: string, f: FiltrosLancamentos, pagina: number): string
   if (f.ate) p.set('ate', f.ate)
   if (f.contaId) p.set('contaId', f.contaId)
   if (f.categoriaId) p.set('categoriaId', f.categoriaId)
+  if (f.favorecidoChave) p.set('favorecidoChave', f.favorecidoChave)
   if (f.texto) p.set('texto', f.texto)
   if (pagina > 1) p.set('pagina', String(pagina))
   const qs = p.toString()
@@ -24,17 +26,18 @@ export default async function PaginaLancamentos({ params, searchParams }: PagePr
   const { id } = await params
   const ws = await obterWorkspace(id)
   const filtros = lerFiltros(await searchParams)
-  const [{ itens, total }, contas, categorias, t, tc] = await Promise.all([
+  const [{ itens, total }, contas, categorias, favorecidos, t, tc] = await Promise.all([
     listarLancamentos(ws.id, filtros),
     listarContas(ws.id),
     listarCategorias(ws.id),
+    listarFavorecidos(ws.id),
     getTranslations('lancamentos'),
     getTranslations('comum'),
   ])
 
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA))
   const base = `/w/${ws.id}/lancamentos`
-  const temFiltro = Boolean(filtros.de || filtros.ate || filtros.contaId || filtros.categoriaId || filtros.texto)
+  const temFiltro = Boolean(filtros.de || filtros.ate || filtros.contaId || filtros.categoriaId || filtros.favorecidoChave || filtros.texto)
 
   return (
     <section className="flex flex-col gap-4">
@@ -44,6 +47,7 @@ export default async function PaginaLancamentos({ params, searchParams }: PagePr
         filtros={filtros}
         contas={contas.map((c) => ({ id: c.id, nome: c.nome }))}
         categorias={categorias.map((c) => ({ id: c.id, nome: c.nome, natureza: c.natureza }))}
+        favorecidos={favorecidos.map((f) => ({ chave: f.chave, nome: f.nome }))}
       />
       <TabelaLancamentos
         key={`tabela-${JSON.stringify(filtros)}`}
@@ -53,6 +57,7 @@ export default async function PaginaLancamentos({ params, searchParams }: PagePr
         total={total}
         contas={contas.map((c) => ({ id: c.id, nome: c.nome }))}
         categorias={categorias.map((c) => ({ id: c.id, nome: c.nome, natureza: c.natureza }))}
+        favorecidos={favorecidos.map((f) => f.nome)}
         temFiltro={temFiltro}
       />
       {totalPaginas > 1 && (
