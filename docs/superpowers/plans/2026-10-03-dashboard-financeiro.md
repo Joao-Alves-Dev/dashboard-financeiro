@@ -295,6 +295,7 @@ useReconhecimento(): { suportado: boolean; ouvindo: boolean; parcial: string; in
 ```
 
 - [ ] **Step 1: Testes que falham** (`hoje = '2026-10-15'`):
+  - O reconhecimento de voz do Chrome costuma devolver nomes próprios em minúsculas: o `favorecido` extraído da fala deve sair com **capitalização de nome próprio** (cada palavra com inicial maiúscula, exceto `da|de|do|das|dos|e`), sem tratamento: `'200 reais para o senhor jeová'` → `favorecido: 'Jeová'`; `'recebi 350 reais da maria josé'` → `'Maria José'`; `'paguei 50 reais para joão da silva'` → `'João da Silva'`. (Evita que o título da exportação saia "Transações efetuadas | jeová".)
   - `'200 reais para o senhor Jeová'` → `{ ok: true, valorCentavos: -20000, descricao: 'Para o senhor Jeová', data: '2026-10-15', favorecido: 'Jeová' }`.
   - `'pagamento do boleto de 5 mil reais referente a financiamento da van Renault'` → `-500000`, descrição contém `'financiamento da van Renault'` e começa com maiúscula.
   - `'R$ 1.500,50 conta de luz'` → `-150050`, `'Conta de luz'`.
