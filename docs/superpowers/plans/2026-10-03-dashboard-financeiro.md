@@ -357,6 +357,8 @@ Regras (documentar em comentário): comparar por chave (`normalizarFavorecido`) 
 
 ### Task 16: Orientador por regras e biblioteca "Aprenda"
 
+> **Nota (Task 16, desvio deliberado):** os textos da biblioteca "Aprenda" são módulos TypeScript (`src/features/orientador/conteudo/<id>.ts` + índice) e não arquivos `.md` com `gray-matter`: na Vercel (serverless) arquivos lidos em runtime não são rastreados de forma confiável no bundle. O markdown mínimo (parágrafos, `##`, listas `-`, **negrito**, exemplos `> `) é renderizado por `renderizarCorpo`, sem dependência nova.
+
 **Files:** Create migração `orientador`; `src/features/orientador/{tipos.ts,contexto.ts,motor.ts,motor.test.ts,regras/*.ts,regras/*.test.ts,conteudo/*.md,biblioteca.ts,biblioteca.test.ts,actions.ts,lista-alertas.tsx,card-alertas.tsx}`; páginas `src/app/w/[id]/orientacoes/page.tsx`, `src/app/w/[id]/orientacoes/[slug]/page.tsx`; Modify `src/app/w/[id]/page.tsx`, config (limites). Dev dep: `gray-matter`.
 
 **Interfaces — Consumes:** `resumo_mensal`, `gastos_por_categoria`, `orcamento_vs_realizado` (Task 10), `listarMetas`/`calcularMeta` (Task 13). **Produces:**
