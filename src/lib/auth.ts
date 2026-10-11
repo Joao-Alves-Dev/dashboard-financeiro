@@ -4,11 +4,12 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { nextCookies } from 'better-auth/next-js'
 import { db } from '../db/cliente'
 import * as authSchema from '../db/auth-schema'
+import { resolverBaseUrl } from './base-url'
 import { obterEdicao, recursos, type Edicao } from './edicao'
 
 // Para regenerar o esquema: remover temporariamente o import 'server-only' deste arquivo
 // e de src/db/cliente.ts e rodar `npx auth@latest generate --config src/lib/auth.ts --output src/db/auth-schema.ts -y`.
-// Segredo e URL base vêm de BETTER_AUTH_SECRET e BETTER_AUTH_URL.
+// Segredo vem de BETTER_AUTH_SECRET; a URL base de BETTER_AUTH_URL (ou VERCEL_PROJECT_PRODUCTION_URL), ver base-url.ts.
 
 type OpcoesAuth = {
   /**
@@ -28,6 +29,7 @@ type OpcoesAuth = {
 export function criarAuth(edicao: Edicao, opcoes: OpcoesAuth = {}) {
   const cadastroAberto = opcoes.cadastroInterno || recursos(edicao).cadastroAberto
   return betterAuth({
+    baseURL: resolverBaseUrl(),
     database: drizzleAdapter(db, { provider: 'pg', schema: authSchema }),
     emailAndPassword: { enabled: true, disableSignUp: !cadastroAberto },
     // Task 18: incluir anonymous() aqui quando recursos(edicao).demo, antes de nextCookies.

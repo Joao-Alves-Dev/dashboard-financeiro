@@ -12,7 +12,11 @@
     "test:integracao": "vitest run --config vitest.integracao.config.mts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:criar-role-app": "tsx scripts/criar-role-app.ts"
+    "db:criar-role-app": "tsx scripts/criar-role-app.ts",
+    "db:migrate:prod": "tsx scripts/migrar.ts --arquivo .env.production.local",
+    "criar-usuario": "tsx scripts/criar-usuario.ts",
+    "adicionar-membro": "tsx scripts/adicionar-membro.ts",
+    "env:copiar": "tsx scripts/copiar-env.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
