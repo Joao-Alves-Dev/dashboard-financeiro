@@ -1,11 +1,11 @@
 # Publicar a edição pessoal (Neon + Vercel)
 
-Guia para você (dono do projeto) publicar o app só para você e para o seu pai. Todos os comandos são digitados no **PowerShell, dentro da pasta `D:\Portfolio\dashboard-financeiro`**. Sempre que um comando perguntar algo, a resposta é digitada no próprio terminal.
+Guia para você (dono do projeto) publicar o app só para você e para um segundo usuário (por exemplo, alguém da família com pouca familiaridade com digitação). Todos os comandos são digitados no **PowerShell, dentro da pasta `D:\Portfolio\dashboard-financeiro`**. Sempre que um comando perguntar algo, a resposta é digitada no próprio terminal.
 
 Regras que valem o guia inteiro:
 
 - Segredos (senhas, chaves, connection strings) **nunca** são colados em chat, e-mail ou arquivo versionado. Os scripts daqui não os imprimem.
-- A **URL final do app é privada**: fica só com você e com o seu pai. Não vai para o README, para o GitHub nem para redes sociais.
+- A **URL final do app é privada**: fica só com você e com o segundo usuário. Não vai para o README, para o GitHub nem para redes sociais.
 - Quando um comando mostrar um quadro com `Branch do Neon: production  <-- PRODUÇÃO`, ele vai pedir que você **digite a palavra `production`**. Isso é de propósito: confira o quadro antes de confirmar.
 
 Ordem geral: **criar o arquivo de ambiente → criar a role do app → migrar → Vercel → atualizar a URL → criar usuários → verificar**.
@@ -66,7 +66,9 @@ Se aparecer `Recusado: ...`, leia a mensagem: ela indica arquivo e branch que n�
 
 1. Em vercel.com: **Add New → Project** → importe o repositório `dashboard-financeiro`.
 2. **Framework Preset: Next.js** (detectado sozinho).
-3. **Antes de clicar em Deploy**, abra **Environment Variables** e crie as 5 variáveis abaixo (marque Production; pode marcar todos os ambientes):
+3. **Antes de clicar em Deploy**, abra **Environment Variables** e crie as 5 variáveis abaixo e marque **SOMENTE Production** (desmarque Preview e Development):
+
+> Por que não Preview: deploys de Preview são gerados para qualquer branch enviada ao GitHub, com código que ainda não foi revisado; se recebessem estas variáveis, esse código rodaria contra o banco de produção com os segredos de produção. Se um dia quiser usar previews, crie uma branch Neon `preview` com um `app_user` próprio e segredos distintos (`BETTER_AUTH_SECRET`, `CRON_SECRET`) e cadastre-os só no ambiente Preview.
 
 | Variável | Valor | De onde vem |
 |---|---|---|
@@ -113,19 +115,19 @@ npm run criar-usuario -- --arquivo .env.production.local
 
 Esperado: quadro com `Branch do Neon: production  <-- PRODUÇÃO` → digite `production` → `Nome:` → `E-mail:` → `Senha (mín. 8 caracteres...)` → `Repita a senha:` → `Usuário criado: ...`.
 
-Usuário 2 (seu pai): rode o **mesmo comando de novo** com o nome e o e-mail dele.
+Usuário 2 (o segundo usuário): rode o **mesmo comando de novo** com o nome e o e-mail dele.
 
 Mensagens possíveis: `Já existe um usuário com este e-mail.` (e-mail repetido) e `A senha precisa ter pelo menos 8 caracteres.`
 
-**Workspaces:** cada pessoa entra no app, faz login e cria o seu workspace. Você cria **"Pessoal"**; o seu pai cria **"Pai"** (ou você cria "Pai" logado como ele, no celular dele).
+**Workspaces:** cada pessoa entra no app, faz login e cria o seu workspace. Você cria **"Pessoal"**; o segundo usuário cria **"Casa"** (ou você cria "Casa" logado como ele, no celular dele). Os nomes são só exemplos.
 
-**Entrar como membro do workspace do pai** (depois de o workspace "Pai" existir):
+**Entrar como membro do workspace do segundo usuário** (depois de o workspace "Casa" existir):
 
 ```powershell
 npm run adicionar-membro -- --arquivo .env.production.local
 ```
 
-Ele pergunta: e-mail do **dono** do workspace (seu pai), nome do workspace (`Pai`) e e-mail de quem vai entrar (o seu). Esperado: `Pronto: ... agora é membro do workspace "Pai".` Rodar de novo é seguro (`já tem acesso ... Nada a fazer`). Se o dono tiver dois workspaces com o mesmo nome, o script lista os ids e pede para renomear um deles no app.
+Ele pergunta: e-mail do **dono** do workspace (o segundo usuário), nome do workspace (`Casa`) e e-mail de quem vai entrar (o seu). Esperado: `Pronto: ... agora é membro do workspace "Casa".` Rodar de novo é seguro (`já tem acesso ... Nada a fazer`). Se o dono tiver dois workspaces com o mesmo nome, o script lista os ids e pede para renomear um deles no app. Desde a migração `0012` só o **dono** do workspace pode renomeá-lo; um membro não consegue.
 
 > Este script é uma ferramenta administrativa local e usa a conexão do **dono do banco** (`DATABASE_URL_UNPOOLED`), porque o usuário do app (`app_user`) não pode gravar em `workspace_members` (de propósito, para ninguém se adicionar a um workspace alheio pelo app). Ele nunca é parte do app publicado.
 
@@ -143,28 +145,40 @@ Faça nesta ordem, usando a URL de produção.
 
    Esperado: `HTTP/1.1 400` e no corpo `EMAIL_PASSWORD_SIGN_UP_DISABLED`. Também: abrir `/cadastro` no navegador deve redirecionar para o login.
 2. **Login** com o usuário 1 no computador.
-3. **Criar os workspaces** "Pessoal" e "Pai" (conforme (f)) e **fazer um lançamento**; ele deve aparecer na lista.
+3. **Criar os workspaces** "Pessoal" e "Casa" (conforme (f)) e **fazer um lançamento**; ele deve aparecer na lista.
 4. **Instalar na tela inicial:**
    - Android (Chrome): menu `⋮` → **Instalar app** (ou *Adicionar à tela inicial*).
    - iPhone (Safari): botão **Compartilhar** → **Adicionar à Tela de Início**.
-5. **Voz no celular do pai.** No Chrome do Android o reconhecimento de voz funciona: abra o workspace, toque no botão de voz, autorize o microfone e diga algo como "paguei vinte e cinco reais de gasolina". Confira a prévia e confirme. **No iPhone o reconhecimento de voz do navegador pode não funcionar** (depende da versão do iOS e do Safari); se o botão não aparecer ou der erro, use a opção **"Digitar a frase"** do mesmo diálogo, que faz a mesma interpretação a partir do texto. O lançamento criado deve aparecer, e o workspace "Pai" deve aparecer no seletor de workspace da **sua** conta (depois de `adicionar-membro`).
+5. **Voz no celular do segundo usuário.** No Chrome do Android o reconhecimento de voz funciona: abra o workspace, toque no botão de voz, autorize o microfone e diga algo como "paguei vinte e cinco reais de gasolina". Confira a prévia e confirme. **No iPhone o reconhecimento de voz do navegador pode não funcionar** (depende da versão do iOS e do Safari); se o botão não aparecer ou der erro, use a opção **"Digitar a frase"** do mesmo diálogo, que faz a mesma interpretação a partir do texto. O lançamento criado deve aparecer, e o workspace "Casa" deve aparecer no seletor de workspace da **sua** conta (depois de `adicionar-membro`).
 6. **Exportar lista e compartilhar:** na tela de exportação, gere a lista por favorecido e período e use **Compartilhar** para enviar ao WhatsApp (no celular).
 
 Se algum item falhar, veja **Settings → Logs** do projeto na Vercel antes de mexer em qualquer coisa.
 
 ---
 
-## (h) Reverter, rotacionar segredos, desfazer deploy
+## (h) Segurança depois do deploy
 
-- **Rotacionar a senha do banco do app:** `npm run db:criar-role-app -- --arquivo .env.production.local` (o quadro de produção não aparece neste script; confira que o arquivo é o de produção). Isso troca a senha do `app_user` e atualiza `DATABASE_URL` no arquivo. Depois: copie o novo valor (`npm run env:copiar -- DATABASE_URL --arquivo .env.production.local`), atualize `DATABASE_URL` na Vercel e **redeploy**. Entre a troca e o redeploy o app fica sem acesso ao banco.
+Confira uma vez, depois que o app estiver no ar:
+
+1. **Preview desmarcado:** na Vercel, **Settings → Environment Variables**, cada uma das 5 variáveis deve estar só em **Production**. Se alguma estiver em Preview ou Development, edite e desmarque (motivo no passo (d)).
+2. **E-mail privado no GitHub** (o repositório é público e cada commit grava o e-mail do autor): em github.com, **Settings → Emails**, marque **"Keep my email addresses private"** e **"Block command line pushes that expose my email"**. No repositório local, use o e-mail `noreply` que essa página mostra: `git config user.email "<id>+<usuario>@users.noreply.github.com"` (sem `--global`, se preferir só neste projeto).
+3. **Headers de segurança:** `curl.exe -s -I https://SUA-URL.vercel.app/login` deve mostrar `X-Frame-Options: DENY`, `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` e `Permissions-Policy` com `microphone=(self)` (a voz depende disso).
+4. **Rotacionar a senha do `app_user`** (se suspeitar de vazamento da `DATABASE_URL`): `npm run db:criar-role-app -- --arquivo .env.production.local` → digite `production` → `npm run env:copiar -- DATABASE_URL --arquivo .env.production.local` → cole em **DATABASE_URL** na Vercel (só Production) → **Redeploy**. Entre a troca e o redeploy o app fica sem acesso ao banco.
+5. **Rotacionar o `BETTER_AUTH_SECRET`:** apague a linha `BETTER_AUTH_SECRET=` do `.env.production.local`, rode `powershell -ExecutionPolicy Bypass -File scripts\criar-env-producao.ps1` (gera um novo e preserva o resto), copie com `npm run env:copiar -- BETTER_AUTH_SECRET --arquivo .env.production.local`, atualize na Vercel e faça **Redeploy**. Efeito: todas as sessões caem e todos fazem login de novo.
+
+---
+
+## (i) Reverter, rotacionar segredos, desfazer deploy
+
+- **Rotacionar a senha do banco do app:** `npm run db:criar-role-app -- --arquivo .env.production.local` (mostra o quadro com host e `Branch do Neon: production  <-- PRODUÇÃO` e pede que você digite `production` antes de conectar). Isso troca a senha do `app_user` e atualiza `DATABASE_URL` no arquivo. Depois: copie o novo valor (`npm run env:copiar -- DATABASE_URL --arquivo .env.production.local`), atualize `DATABASE_URL` na Vercel e **redeploy**. Entre a troca e o redeploy o app fica sem acesso ao banco.
 - **Rotacionar `BETTER_AUTH_SECRET`:** troque o valor no arquivo (apague a linha e rode `criar-env-producao.ps1`, que gera um novo) e na Vercel e redeploy. Efeito: todos precisam fazer login de novo.
 - **Rotacionar `CRON_SECRET`:** mesmo processo; sem efeito para o usuário na edição pessoal.
 - **Deploy ruim:** Vercel → **Deployments** → escolha o último deploy bom → menu `...` → **Promote to Production** (ou *Instant Rollback*). É imediato e não mexe no banco. Migrações aplicadas **não** são desfeitas por isso; por isso as migrações do projeto são feitas para serem compatíveis com a versão anterior do código.
 - **Banco:** o Neon mantém histórico para restaurar a branch a um ponto no tempo (painel do Neon → Branches → Restore). Use só em caso grave.
 
-## (i) O que NÃO commitar
+## (j) O que NÃO commitar
 
-Nunca versionar: `.env.local`, `.env.production.local` (o `.gitignore` cobre `.env*.local`, mas confira o `git status` antes de cada commit), qualquer connection string, senha, `BETTER_AUTH_SECRET` ou `CRON_SECRET`, e a **URL final da Vercel** (não coloque no README nem em issues). Se algum segredo vazar: rotacione conforme (h) imediatamente.
+Nunca versionar: `.env.local`, `.env.production.local` (o `.gitignore` cobre tudo que começa com `.env`, exceto `.env.example`, mas confira o `git status` antes de cada commit), qualquer connection string, senha, `BETTER_AUTH_SECRET` ou `CRON_SECRET`, e a **URL final da Vercel** (não coloque no README nem em issues). Se algum segredo vazar: rotacione conforme (i) imediatamente.
 
 ---
 
@@ -178,7 +192,7 @@ npm run db:migrate:prod
 # Vercel: criar projeto, variáveis, Deploy; conferir Function Region = iad1
 # editar BETTER_AUTH_URL (arquivo + Vercel) e Redeploy
 npm run criar-usuario -- --arquivo .env.production.local      # você
-npm run criar-usuario -- --arquivo .env.production.local      # seu pai
-# cada um faz login e cria o workspace ("Pessoal", "Pai")
+npm run criar-usuario -- --arquivo .env.production.local      # segundo usuário
+# cada um faz login e cria o workspace ("Pessoal", "Casa")
 npm run adicionar-membro -- --arquivo .env.production.local
 ```

@@ -1,7 +1,11 @@
 /**
  * Aplica as migrações (drizzle-kit migrate) no banco indicado por um arquivo de env.
  *
- * Uso: tsx scripts/migrar.ts --arquivo <env>      (npm run db:migrate:prod usa .env.production.local)
+ * Uso: tsx scripts/migrar.ts [--arquivo <env>]    (padrão .env.local)
+ *   npm run db:migrate      -> .env.local (branch dev)
+ *   npm run db:migrate:prod -> .env.production.local
+ * - o ENV_FILE do processo filho é sempre o arquivo escolhido aqui: um ENV_FILE herdado do shell
+ *   não consegue apontar a migração para outro banco;
  * - mostra HOST do banco (nunca senha) e a branch (NEON_BRANCH);
  * - em `production`, exige digitar o nome da branch para confirmar;
  * - roda o drizzle-kit com ENV_FILE apontando para o mesmo arquivo (ver drizzle.config.ts).

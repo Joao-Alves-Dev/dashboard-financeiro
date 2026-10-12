@@ -85,6 +85,13 @@
       "when": 1791839899596,
       "tag": "0011_conta_padrao",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791845367779,
+      "tag": "0012_restringir_update_workspaces",
+      "breakpoints": true
     }
   ]
 }
