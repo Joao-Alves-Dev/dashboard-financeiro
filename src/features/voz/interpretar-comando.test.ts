@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { PERIODO_TUDO } from '@/features/exportacao/periodos'
 import { interpretarComando } from './interpretar-comando'
 
 const HOJE = '2026-10-08'
@@ -71,14 +72,22 @@ describe('interpretarComando', () => {
     })
   })
 
-  it('falta o período: pergunta, mantendo o que já entendeu', () => {
+  it('sem período: exporta TUDO (todoPeriodo), mantendo o favorecido e o tipo', () => {
+    // Task 15d: antes devolvia exportar_incompleto e o app perguntava "De que período?".
     expect(interpretarComando('exporte para Jeová', HOJE)).toEqual({
-      tipo: 'exportar_incompleto',
-      falta: 'periodo',
+      tipo: 'exportar',
       favorecido: 'Jeová',
+      ...PERIODO_TUDO,
+      todoPeriodo: true,
       filtroTipo: 'saidas',
     })
-    expect(interpretarComando('exporte', HOJE)).toMatchObject({ tipo: 'exportar_incompleto', favorecido: '' })
+    expect(interpretarComando('exporte', HOJE)).toMatchObject({ tipo: 'exportar', favorecido: '', todoPeriodo: true })
+  })
+
+  it('com período explícito não há todoPeriodo', () => {
+    const c = interpretarComando('exporte para Maria de 1 a 8 de outubro', HOJE)
+    expect(c).toMatchObject({ tipo: 'exportar', favorecido: 'Maria', de: '2026-10-01', ate: '2026-10-08' })
+    expect('todoPeriodo' in c).toBe(false)
   })
 
   it('bordas da fala real', () => {
@@ -117,5 +126,106 @@ describe('interpretarComando', () => {
     expect(interpretarComando('paguei 100 reais para o senhor Jeová dia 29 de setembro', HOJE)).toEqual({ tipo: 'lancamento' })
     expect(interpretarComando('', HOJE)).toEqual({ tipo: 'lancamento' })
     expect(interpretarComando('Jeová de 29 de setembro até 8 de outubro', HOJE)).toEqual({ tipo: 'lancamento' })
+  })
+})
+
+describe('interpretarComando: sem período e favorecido conhecido em qualquer posição (Task 15d)', () => {
+  const conhecidos = [
+    { chave: 'roberto', nome: 'Roberto' },
+    { chave: 'maria souza', nome: 'Maria Souza' },
+    { chave: 'maria', nome: 'Maria' },
+  ]
+  const todo = { de: PERIODO_TUDO.de, ate: PERIODO_TUDO.ate, todoPeriodo: true }
+
+  it.each([
+    'exporte transações efetuadas roberto',
+    'exporte as transações do senhor roberto',
+    'exporta a lista do Roberto',
+    'roberto exporte as transações',
+    'me manda a lista de pagamentos efetuados ao roberto',
+    'exporte o relatório do seu Roberto por favor',
+    'exporte transações efetuadas Roberto',
+  ])('%s -> tudo do Roberto', (fala) => {
+    expect(interpretarComando(fala, HOJE, { favorecidosConhecidos: conhecidos })).toEqual({
+      tipo: 'exportar',
+      favorecido: 'Roberto',
+      filtroTipo: 'saidas',
+      ...todo,
+    })
+  })
+
+  it('sem a lista de conhecidos, com preposição, o nome sai igual', () => {
+    expect(interpretarComando('exporta a lista do Roberto', HOJE)).toMatchObject({ favorecido: 'Roberto', todoPeriodo: true })
+    expect(interpretarComando('exporte as transações do senhor Roberto', HOJE)).toMatchObject({ favorecido: 'Roberto' })
+  })
+
+  it('o nome conhecido de mais palavras vence, na grafia cadastrada', () => {
+    const c = interpretarComando('exporte as transações da dona maria souza', HOJE, { favorecidosConhecidos: conhecidos })
+    expect(c).toMatchObject({ favorecido: 'Maria Souza', todoPeriodo: true })
+    const m = interpretarComando('exporte as transações da maria', HOJE, { favorecidosConhecidos: conhecidos })
+    expect(m).toMatchObject({ favorecido: 'Maria' })
+  })
+
+  it('nome conhecido junto com período explícito', () => {
+    expect(interpretarComando('exporte transações efetuadas roberto do mês passado', HOJE, { favorecidosConhecidos: conhecidos })).toEqual({
+      tipo: 'exportar',
+      favorecido: 'Roberto',
+      de: '2026-09-01',
+      ate: '2026-09-30',
+      filtroTipo: 'saidas',
+    })
+  })
+
+  it('exporte tudo (sem favorecido e sem período): tudo de todos', () => {
+    expect(interpretarComando('exporte tudo', HOJE, { favorecidosConhecidos: conhecidos })).toEqual({
+      tipo: 'exportar',
+      favorecido: '',
+      filtroTipo: 'todas',
+      ...todo,
+    })
+    expect(interpretarComando('exportar todas as transações efetuadas', HOJE)).toMatchObject({ favorecido: '', todoPeriodo: true })
+  })
+
+  it('nome desconhecido sem preposição é mantido (o app sugere parecidos; nunca exporta todos por engano)', () => {
+    expect(interpretarComando('exporte transações efetuadas ricardo', HOJE, { favorecidosConhecidos: conhecidos })).toMatchObject({
+      favorecido: 'Ricardo',
+      todoPeriodo: true,
+    })
+    expect(interpretarComando('exporte transações efetuadas ricardo', HOJE)).toMatchObject({ favorecido: 'Ricardo' })
+  })
+
+  it('palavras do próprio pedido nunca viram nome', () => {
+    for (const fala of [
+      'exporte transações efetuadas',
+      'exporte a lista de pagamentos',
+      'exporte o relatório',
+      'exporte tudo',
+      'gerar lista de transações efetuadas',
+      'me manda o extrato em pdf',
+    ]) {
+      expect(interpretarComando(fala, HOJE, { favorecidosConhecidos: conhecidos }), fala).toMatchObject({
+        tipo: 'exportar',
+        favorecido: '',
+      })
+    }
+  })
+
+  it('o nome conhecido não casa no meio de outra palavra', () => {
+    // "mariana" contém "maria" mas é outra pessoa; sem preposição, vira nome desconhecido.
+    expect(interpretarComando('exporte transações efetuadas mariana', HOJE, { favorecidosConhecidos: conhecidos })).toMatchObject({
+      favorecido: 'Mariana',
+    })
+  })
+
+  it('nenhuma frase devolve exportar_incompleto', () => {
+    for (const fala of ['exporte', 'exporte para Roberto', 'exporte tudo', 'manda a lista']) {
+      expect(interpretarComando(fala, HOJE).tipo).not.toBe('exportar_incompleto')
+    }
+  })
+
+  it('lançamento continua lançamento', () => {
+    expect(interpretarComando('paguei 100 reais para o roberto em 29 de setembro de 2026', HOJE, { favorecidosConhecidos: conhecidos })).toEqual({
+      tipo: 'lancamento',
+    })
   })
 })

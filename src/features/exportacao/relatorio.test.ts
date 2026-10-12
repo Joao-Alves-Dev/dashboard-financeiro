@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { PERIODO_TUDO } from './periodos'
 import { montarRelatorio, type OpcoesRelatorio } from './relatorio'
 
 const NB = ' '
@@ -88,3 +89,47 @@ describe('montarRelatorio', () => {
     expect(r.linhas[0].anotacao).toBe('a b')
   })
 })
+
+describe('montarRelatorio: todo o período (Task 15d)', () => {
+  const roberto = [
+    { data: '2026-10-09', descricao: 'Frete', valorCentavos: -10000 },
+    { data: '2026-09-29', descricao: 'Frete', valorCentavos: -10000 },
+    { data: '2026-10-05', descricao: 'Peças', valorCentavos: -30000 },
+    { data: '2026-10-08', descricao: 'Peças', valorCentavos: -30000 },
+  ]
+  const tudo: OpcoesRelatorio = { ...base, favorecido: 'Roberto', ...PERIODO_TUDO, todoPeriodo: true }
+
+  it('inclui todas as datas e rotula o período pelas datas das linhas (menor e maior)', () => {
+    const r = montarRelatorio(roberto, tudo)
+    expect(r.linhas.map((l) => l.data)).toEqual(['29/09/2026', '05/10/2026', '08/10/2026', '09/10/2026'])
+    expect(r.periodo).toBe('29/09/2026 a 09/10/2026')
+    expect(r.de).toBe('2026-09-29')
+    expect(r.ate).toBe('2026-10-09')
+  })
+
+  it('ignora de/ate quando todoPeriodo (mesmo com datas que excluiriam as linhas)', () => {
+    const r = montarRelatorio(roberto, { ...tudo, de: '2026-10-01', ate: '2026-10-02' })
+    expect(r.linhas).toHaveLength(4)
+  })
+
+  it('sem linhas: "Todo o período" e sem extremos', () => {
+    const r = montarRelatorio([], tudo)
+    expect(r.periodo).toBe('Todo o período')
+    expect(r.de).toBeUndefined()
+    expect(r.ate).toBeUndefined()
+  })
+
+  it('só os extremos das linhas que passam no filtro de tipo', () => {
+    const l = [...roberto, { data: '2027-01-02', descricao: 'Estorno', valorCentavos: 5000 }]
+    expect(montarRelatorio(l, tudo).periodo).toBe('29/09/2026 a 09/10/2026')
+    expect(montarRelatorio(l, { ...tudo, tipo: 'todas' }).periodo).toBe('29/09/2026 a 02/01/2027')
+  })
+
+  it('período explícito também informa de/ate (extremos do intervalo pedido)', () => {
+    const r = montarRelatorio(roberto, { ...base, favorecido: 'Roberto', de: '2026-09-01', ate: '2026-10-31' })
+    expect(r.periodo).toBe('01/09/2026 a 31/10/2026')
+    expect(r.de).toBe('2026-09-01')
+    expect(r.ate).toBe('2026-10-31')
+  })
+})
+

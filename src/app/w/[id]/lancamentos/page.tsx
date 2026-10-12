@@ -7,6 +7,7 @@ import { FiltrosLancamentosForm } from '@/features/lancamentos/filtros-lancament
 import { listarLancamentos } from '@/features/lancamentos/queries'
 import { lerFiltros, POR_PAGINA, type FiltrosLancamentos } from '@/features/lancamentos/schemas'
 import { TabelaLancamentos } from '@/features/lancamentos/tabela-lancamentos'
+import { BotaoVoz } from '@/features/voz/botao-voz'
 import { obterWorkspace } from '@/features/workspaces/queries'
 
 function hrefPagina(base: string, f: FiltrosLancamentos, pagina: number): string {
@@ -41,11 +42,15 @@ export default async function PaginaLancamentos({ params, searchParams }: PagePr
   if (filtros.favorecidoChave) exp.set('favorecido', filtros.favorecidoChave)
   if (filtros.de) exp.set('de', filtros.de)
   if (filtros.ate) exp.set('ate', filtros.ate)
+  // Sem datas nos filtros, a lista exportada traz todo o período (não só o mês corrente).
+  if (!filtros.de && !filtros.ate) exp.set('todo', '1')
   const hrefExportar = `/w/${ws.id}/exportar${exp.size > 0 ? `?${exp}` : ''}`
   const temFiltro = Boolean(filtros.de || filtros.ate || filtros.contaId || filtros.categoriaId || filtros.favorecidoChave || filtros.texto)
 
   return (
     <section className="flex flex-col gap-4">
+      {/* A voz é o principal meio de lançar de quem usa só o celular: o botão é a primeira coisa da tela. */}
+      <BotaoVoz />
       <h1 className="text-2xl font-semibold tracking-tight">{t('titulo')}</h1>
       <FiltrosLancamentosForm
         key={`filtros-${JSON.stringify({ ...filtros, pagina: 1 })}`}

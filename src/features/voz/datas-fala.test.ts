@@ -90,3 +90,10 @@ describe('avisoDeData', () => {
     expect(avisoDeData('2030-01-01', hoje)).toBe('ano')
   })
 })
+
+describe('dataPorExtenso: sempreAno', () => {
+  it('inclui o ano mesmo no ano corrente', () => {
+    expect(dataPorExtenso('2026-09-29', '2026-10-08')).toBe('29 de setembro')
+    expect(dataPorExtenso('2026-09-29', '2026-10-08', { sempreAno: true })).toBe('29 de setembro de 2026')
+  })
+})

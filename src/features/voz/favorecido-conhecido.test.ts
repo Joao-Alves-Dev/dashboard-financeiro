@@ -133,10 +133,12 @@ describe('interpretarComando com favorecidosConhecidos', () => {
     })
   })
 
-  it('exportar_incompleto também usa a grafia do conhecido', () => {
+  it('exportação sem período (todo o período) também usa a grafia do conhecido', () => {
+    // Task 15d: antes era `exportar_incompleto` (pergunta de período); sem período agora vale tudo.
     expect(interpretarComando('exporte para jeova', H, opcoes(JEOVA))).toMatchObject({
-      tipo: 'exportar_incompleto',
+      tipo: 'exportar',
       favorecido: 'Jeová',
+      todoPeriodo: true,
     })
   })
 

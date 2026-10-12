@@ -8,14 +8,12 @@ import { useLancamentoRapido } from '@/features/lancamentos/lancamento-rapido-co
 import type { Regra } from '@/features/importacao/aplicar-regras'
 import { normalizarFavorecido } from '@/features/favorecido/normalizar'
 import { calarFala, falar } from './falar'
-import { resolverPeriodo } from '@/features/exportacao/periodos'
-import type { TipoExportacao } from '@/features/exportacao/relatorio'
 import { interpretarComando } from './interpretar-comando'
 import { interpretarFala, type FalaInterpretada } from './interpretar-fala'
 import { useReconhecimento } from './use-reconhecimento'
 import { ConfirmacaoExportacao, type ComandoExportar } from './confirmacao-exportacao'
 import { ConfirmacaoVoz } from './confirmacao-voz'
-import { TelaDigitar, TelaErro, TelaOuvindo, TelaPeriodo } from './telas-voz'
+import { TelaDigitar, TelaErro, TelaOuvindo } from './telas-voz'
 
 type FalaOk = Extract<FalaInterpretada, { ok: true }>
 
@@ -25,11 +23,7 @@ type Fase =
   | { tipo: 'digitando' }
   | { tipo: 'confirmando'; fala: FalaOk; texto: string }
   | { tipo: 'exportando'; cmd: ComandoExportar; texto: string }
-  | { tipo: 'periodo'; favorecido: string; texto: string }
   | { tipo: 'erro'; mensagem: string; texto: string | null; falarMensagem: boolean }
-
-/** Pedido de lista que ficou sem período: o que já foi entendido espera a resposta. */
-type Retido = { favorecido: string; filtroTipo: TipoExportacao }
 
 type Contexto = {
   /** Toque no microfone: abre a tela de escuta (ou a de digitar, se o navegador não ouve). */
@@ -59,7 +53,6 @@ export function VozProvider({ regras, children }: { regras: Regra[]; children: R
   const [fase, setFase] = useState<Fase>({ tipo: 'fechado' })
   const [finalVisto, setFinalVisto] = useState<string | null>(null)
   const [erroVisto, setErroVisto] = useState<string | null>(null)
-  const [retido, setRetido] = useState<Retido | null>(null)
 
   // Favorecidos já cadastrados (os mesmos do <datalist>): o nome falado é reconhecido contra eles.
   const opcoes = useMemo(() => {
@@ -70,40 +63,15 @@ export function VozProvider({ regras, children }: { regras: Regra[]; children: R
     return { favorecidosConhecidos }
   }, [dados.favorecidos])
 
-  // Toda frase passa por `interpretarComando`: pedido de lista segue o fluxo de exportação; qualquer
-  // outra coisa é lançamento (fluxo anterior, intacto).
+  // Toda frase passa por `interpretarComando`: pedido de lista segue o fluxo de exportação (sem período =
+  // todas as transações, então nunca há pergunta); qualquer outra coisa é lançamento (fluxo anterior, intacto).
   const processar = useCallback(
     (texto: string) => {
       const hoje = hojeLocal()
       const cmd = interpretarComando(texto, hoje, opcoes)
       if (cmd.tipo === 'exportar') {
-        setRetido(null)
         setFase({ tipo: 'exportando', cmd, texto })
         return
-      }
-      if (cmd.tipo === 'exportar_incompleto') {
-        setRetido({ favorecido: cmd.favorecido, filtroTipo: cmd.filtroTipo })
-        setFase({ tipo: 'periodo', favorecido: cmd.favorecido, texto })
-        return
-      }
-      // Resposta à pergunta "de que período?": completa o pedido que ficou esperando.
-      if (retido) {
-        const periodo = resolverPeriodo(texto, hoje)
-        if (periodo) {
-          setRetido(null)
-          setFase({
-            tipo: 'exportando',
-            cmd: { tipo: 'exportar', favorecido: retido.favorecido, ...periodo, filtroTipo: retido.filtroTipo },
-            texto,
-          })
-          return
-        }
-        // Nem período nem lançamento: continua perguntando o período.
-        if (!interpretarFala(texto, hoje, opcoes).ok) {
-          setFase({ tipo: 'periodo', favorecido: retido.favorecido, texto })
-          return
-        }
-        setRetido(null)
       }
       const r = interpretarFala(texto, hoje, opcoes)
       if (r.ok) setFase({ tipo: 'confirmando', fala: r, texto })
@@ -111,7 +79,7 @@ export function VozProvider({ regras, children }: { regras: Regra[]; children: R
         setFase({ tipo: 'erro', mensagem: t('naoEntendiValor'), texto, falarMensagem: true })
       } else setFase({ tipo: 'erro', mensagem: t('naoEntendiVazio'), texto: null, falarMensagem: false })
     },
-    [t, retido, opcoes],
+    [t, opcoes],
   )
 
   // Reage ao resultado do reconhecimento durante a renderização (padrão "ajustar estado conforme props").
@@ -145,7 +113,6 @@ export function VozProvider({ regras, children }: { regras: Regra[]; children: R
   const fechar = useCallback(() => {
     rec.parar()
     calarFala()
-    setRetido(null)
     setFase({ tipo: 'fechado' })
   }, [rec])
 
@@ -154,13 +121,6 @@ export function VozProvider({ regras, children }: { regras: Regra[]; children: R
     registrarVoz(iniciar)
     return () => registrarVoz(null)
   }, [registrarVoz, iniciar])
-
-  // Pergunta falada do período.
-  useEffect(() => {
-    if (fase.tipo === 'periodo') {
-      falar(fase.favorecido ? t('exportar.perguntaPeriodoPara', { nome: fase.favorecido }) : t('exportar.perguntaPeriodo'))
-    }
-  }, [fase, t])
 
   // Fala o erro de valor (efeito só de áudio; nenhum estado é alterado aqui).
   useEffect(() => {
@@ -202,20 +162,9 @@ export function VozProvider({ regras, children }: { regras: Regra[]; children: R
               aoCancelar={fechar}
             />
           )}
-          {fase.tipo === 'periodo' && (
-            <TelaPeriodo
-              favorecido={fase.favorecido}
-              texto={fase.texto}
-              podeFalar={rec.suportado}
-              aoEscolher={processar}
-              aoFalar={iniciar}
-              aoDigitar={digitar}
-              aoCancelar={fechar}
-            />
-          )}
           {fase.tipo === 'exportando' && (
             <ConfirmacaoExportacao
-              key={`${fase.texto}|${fase.cmd.favorecido}|${fase.cmd.de}|${fase.cmd.ate}`}
+              key={`${fase.texto}|${fase.cmd.favorecido}|${fase.cmd.de}|${fase.cmd.ate}|${fase.cmd.todoPeriodo ?? false}`}
               cmd={fase.cmd}
               texto={fase.texto}
               aoFalarDeNovo={iniciar}

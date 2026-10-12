@@ -98,10 +98,10 @@ export function diaMesParaData(dia: number, mes: number | null, ano: number | nu
 }
 
 /** '2026-10-08' com hoje '2026-10-08' -> "hoje, 8 de outubro"; outras datas: "29 de setembro" (+ " de 2025" se o ano difere). */
-export function dataPorExtenso(iso: string, hoje: string): string {
+export function dataPorExtenso(iso: string, hoje: string, opcoes?: { sempreAno?: boolean }): string {
   const { a, m, d } = partes(iso)
   const base = `${d === 1 ? '1º' : d} de ${NOMES_MESES[m - 1]}`
-  const completo = a === partes(hoje).a ? base : `${base} de ${a}`
+  const completo = a === partes(hoje).a && !opcoes?.sempreAno ? base : `${base} de ${a}`
   if (iso === hoje) return `hoje, ${completo}`
   if (iso === somarDias(hoje, -1)) return `ontem, ${completo}`
   if (iso === somarDias(hoje, -2)) return `anteontem, ${completo}`

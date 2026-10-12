@@ -3,6 +3,13 @@ import { montarDataIso } from '@/features/importacao/datas'
 import { diaDaSemana, diaMesParaData, numeroDoMes, somarDias } from '@/features/voz/datas-fala'
 import { extensoParaNumero, semAcento } from '@/features/voz/numeros-extenso'
 
+/**
+ * "Todo o período": sentinelas para `de`/`ate` quando o pedido não cita período (voz). São datas válidas
+ * (1900-2200) para passar pelo mesmo schema; o comando também carrega `todoPeriodo: true`, e é esta flag que
+ * o servidor e `montarRelatorio` obedecem (sem filtro de data; rótulo = menor e maior data das linhas).
+ */
+export const PERIODO_TUDO = { de: '1900-01-01', ate: '2200-12-31' } as const
+
 /** Palavra já normalizada (minúsculas, sem acento, sem pontuação nas pontas). */
 type P = { l: string }
 

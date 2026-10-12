@@ -121,9 +121,6 @@
     "vazio": "Nenhum lançamento encontrado",
     "vazioDescricao": "Registre o primeiro lançamento deste workspace.",
     "vazioFiltro": "Nenhum lançamento corresponde aos filtros.",
-    "semConta": "Nenhuma conta ainda — crie a primeira",
-    "semContaDescricao": "Todo lançamento pertence a uma conta (corrente, cartão ou dinheiro). Crie uma para começar.",
-    "criarConta": "Criar conta",
     "filtros": {
       "titulo": "Filtros",
       "de": "De",
@@ -203,13 +200,11 @@
       "nova": "Nova conta",
       "editarTitulo": "Editar conta",
       "novaTitulo": "Nova conta",
-      "vazio": "Nenhuma conta ainda — crie a primeira",
-      "vazioDescricao": "Sem conta você não consegue registrar lançamentos.",
       "nome": "Nome",
       "nomePlaceholder": "Ex.: Nubank, Carteira",
       "tipo": "Tipo",
       "saldoInicial": "Saldo inicial",
-      "saldoInicialDica": "Pode ficar vazio. Use sinal de menos para saldo negativo.",
+      "saldoInicialDica": "Deixe em branco se não souber. Use sinal de menos para saldo negativo.",
       "tipos": {
         "corrente": "Conta corrente",
         "cartao": "Cartão",
@@ -219,7 +214,8 @@
       "excluirTitulo": "Excluir conta?",
       "excluirTextoVazia": "A conta \"{nome}\" será apagada. Esta ação não pode ser desfeita.",
       "excluirTextoComLancamentos": "A conta \"{nome}\" tem {n, plural, one {# lançamento} other {# lançamentos}}. Excluir a conta apaga também {n, plural, one {esse lançamento} other {esses lançamentos}}, para sempre.",
-      "confirmarExclusao": "Excluir conta e {n, plural, one {# lançamento} other {# lançamentos}}"
+      "confirmarExclusao": "Excluir conta e {n, plural, one {# lançamento} other {# lançamentos}}",
+      "saldoInicialOpcional": "Saldo inicial (opcional)"
     },
     "categorias": {
       "titulo": "Categorias",
@@ -367,7 +363,9 @@
       "variacao": "Variação de {pct} em relação ao mês anterior",
       "vsAnterior": "{pct} vs. mês anterior",
       "semComparacao": "Sem mês anterior para comparar",
-      "igual": "Igual ao mês anterior"
+      "igual": "Igual ao mês anterior",
+      "resultadoAcumulado": "Resultado acumulado",
+      "resultadoAcumuladoAjuda": "Soma de todos os lançamentos efetivados. Nenhuma conta tem saldo inicial informado, então não é um saldo bancário."
     },
     "grafico": {
       "titulo": "Entradas e saídas",
@@ -572,9 +570,6 @@
     "salvar": "Salvar",
     "salvando": "Salvando…",
     "salvo": "Lançamento salvo: {valor} ({tipo}).",
-    "semContaTitulo": "Nenhuma conta cadastrada",
-    "semContaTexto": "Todo lançamento pertence a uma conta. Crie a primeira em Configurações.",
-    "semContaLink": "Criar conta",
     "semCategorias": "Sem categorias",
     "favorecidoLinkSaida": "Para quem?",
     "favorecidoLinkEntrada": "De quem?",
@@ -584,11 +579,11 @@
     "titulo": "Lançamento por voz",
     "botao": "Toque e fale",
     "botaoAria": "Lançar por voz. Toque e fale o valor e o motivo.",
-    "exemplo": "Diga, por exemplo: \"200 reais para o senhor Jeová\"",
+    "exemplo": "Diga, por exemplo: \"paguei 200 reais para o Roberto dia 29 de setembro\"",
     "semSuporte": "Seu navegador não ouve a voz. Use o Chrome.",
     "digitarFrase": "Digitar a frase",
     "digiteFrase": "Digite a frase",
-    "digiteFraseDica": "Escreva como falaria. Ex.: 200 reais para o senhor Jeová",
+    "digiteFraseDica": "Escreva como falaria. Ex.: paguei 200 reais para o Roberto",
     "continuar": "Continuar",
     "ouvindo": "Estou ouvindo…",
     "ouvindoDica": "Fale o valor e o motivo.",
@@ -614,7 +609,6 @@
     "paraQuem": "Para quem (opcional)",
     "deQuem": "De quem (opcional)",
     "anotado": "Anotado: {valor} {descricao}",
-    "semContaTexto": "Para salvar, crie primeiro uma conta em Configurações.",
     "erros": {
       "microfoneNegado": "Permita o microfone nas configurações do navegador",
       "semFala": "Não ouvi nada. Toque e fale de novo.",
@@ -639,24 +633,20 @@
       "querDizer": "Não encontrei {nome}. Você quis dizer {sugestoes}?",
       "ou": " ou ",
       "sugestoesTitulo": "Quem você quis dizer?",
-      "perguntaPeriodo": "De que período?",
-      "perguntaPeriodoPara": "De que período, para {nome}?",
-      "perguntaPeriodoDica": "Toque num atalho, ou fale. Por exemplo: \"este mês\" ou \"de 29 de setembro até 8 de outubro\".",
       "compartilhar": "Compartilhar",
-      "baixar": "Baixar",
-      "baixarPdf": "Baixar em PDF",
+      "baixar": "Baixar imagem",
       "ajustar": "Ajustar",
       "erro": "Não consegui montar a lista. Tente de novo.",
       "compartilhado": "Pronto, lista compartilhada.",
       "baixado": "Pronto, lista baixada.",
-      "atalhoEsteMes": "Este mês",
-      "atalhoMesPassado": "Mês passado",
-      "atalhoUltimos30": "Últimos 30 dias",
       "previaAlt": "Lista pronta, parte {numero} de {total}",
-      "pdf": "PDF",
-      "fechar": "Fechar"
+      "fechar": "Fechar",
+      "nenhumaParaTudo": "Não encontrei transações para {nome}.",
+      "nenhumaTudo": "Não encontrei transações."
     },
-    "dicaExportar": "Para a lista: \"exporte as transações do Jeová deste mês\""
+    "dicaExportar": "Para a lista, diga: \"exporte as transações do Roberto\"",
+    "avisoFuturo": "Data no futuro. Confira se está certo.",
+    "avisoAno": "Confira o ano: essa data está a mais de um ano daqui."
   },
   "exportacao": {
     "muitos": "Muitos lançamentos neste período. Reduza o intervalo.",
@@ -675,7 +665,8 @@
     "atalhos": {
       "esteMes": "Este mês",
       "mesPassado": "Mês passado",
-      "ultimos30": "Últimos 30 dias"
+      "ultimos30": "Últimos 30 dias",
+      "todo": "Todo o período"
     },
     "tipo": {
       "titulo": "Quais transações",
@@ -684,11 +675,6 @@
       "todas": "Todas"
     },
     "mostrarTotal": "Mostrar o total no final",
-    "anotacoes": {
-      "titulo": "Anotações",
-      "descricao": "Descrição",
-      "branco": "Em branco"
-    },
     "apenasEfetivadas": "Só entram transações já efetivadas (as pendentes ficam de fora).",
     "previa": "Como vai ficar",
     "previaAlt": "Prévia da lista, parte {numero} de {total}",
@@ -699,14 +685,17 @@
     "naoExiste": "Não encontrei ninguém com o nome \"{nome}\".",
     "querDizer": "Você quis dizer:",
     "compartilhar": "Compartilhar",
-    "baixarPng": "Baixar PNG",
-    "baixarPdf": "Baixar PDF",
+    "baixarPng": "Baixar imagem (PNG)",
+    "baixarPdf": "Baixar em PDF",
     "compartilhadoOk": "Pronto, lista compartilhada.",
     "baixadoOk": "Pronto, lista baixada.",
     "erroGerar": "Não consegui montar a lista. Tente de novo.",
     "erroBuscar": "Não consegui buscar as transações. Tente de novo.",
     "tituloCompartilhar": "Transações efetuadas | {nome}",
-    "quantidade": "{n, plural, one {# transação} other {# transações}}"
+    "quantidade": "{n, plural, one {# transação} other {# transações}}",
+    "todoDica": "Todas as transações, desde a primeira. O período da lista sai das datas das próprias transações.",
+    "mostrarDescricao": "Mostrar a descrição em Anotações",
+    "mostrarDescricaoDica": "Desligado, a coluna Anotações sai em branco (para escrever à mão)."
   },
   "orientador": {
     "titulo": "Orientações",

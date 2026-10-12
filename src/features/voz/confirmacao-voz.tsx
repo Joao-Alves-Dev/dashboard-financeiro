@@ -1,9 +1,8 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { ArrowDownRightIcon, ArrowUpRightIcon } from 'lucide-react'
+import { AlertTriangleIcon, ArrowDownRightIcon, ArrowUpRightIcon } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,7 +13,7 @@ import { criarLancamento } from '@/features/lancamentos/actions'
 import { useLancamentoRapido } from '@/features/lancamentos/lancamento-rapido-contexto'
 import { centavosParaCampo, hojeLocal } from '@/lib/formato'
 import { formatarBRL } from '@/lib/money'
-import { dataPorExtenso } from './datas-fala'
+import { avisoDeData, dataPorExtenso } from './datas-fala'
 import { falar } from './falar'
 import type { FalaInterpretada } from './interpretar-fala'
 import { CabecalhoVoz } from './telas-voz'
@@ -60,7 +59,9 @@ export function ConfirmacaoVoz({
   }, [fala.descricao, regras, dados.categorias, entrada])
 
   const itensConta = dados.contas.map((c) => ({ value: c.id, label: c.nome }))
-  const semConta = dados.contas.length === 0
+  // Conta única (ou nenhuma: o servidor cria a Carteira) é usada em silêncio; o seletor só existe com 2 ou mais.
+  const hoje = hojeLocal()
+  const avisoData = avisoDeData(fala.data, hoje)
   const corValor = entrada ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
 
   function salvar() {
@@ -144,19 +145,26 @@ export function ConfirmacaoVoz({
 
         <div className={LINHA}>
           <p className={ROTULO}>{t('data')}</p>
-          <p className={VALOR_LINHA}>{dataPorExtenso(fala.data, hojeLocal())}</p>
+          <p className={VALOR_LINHA}>{dataPorExtenso(fala.data, hoje, { sempreAno: true })}</p>
+          {avisoData && (
+            <p
+              role="alert"
+              className={cn(
+                'flex items-start gap-2 rounded-lg px-3 py-2 text-lg font-semibold',
+                avisoData === 'ano'
+                  ? 'bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-100'
+                  : 'bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-100',
+              )}
+            >
+              <AlertTriangleIcon aria-hidden className="mt-0.5 size-5 shrink-0" />
+              {avisoData === 'ano' ? t('avisoAno') : t('avisoFuturo')}
+            </p>
+          )}
         </div>
 
-        <div className={LINHA}>
-          <Label className={ROTULO}>{t('conta')}</Label>
-          {semConta ? (
-            <p className="text-lg">
-              {t('semContaTexto')}{' '}
-              <Link href={`/w/${dados.workspaceId}/config`} onClick={aoFechar} className="font-semibold underline">
-                {tr('semContaLink')}
-              </Link>
-            </p>
-          ) : (
+        {dados.contas.length > 1 && (
+          <div className={LINHA}>
+            <Label className={ROTULO}>{t('conta')}</Label>
             <Select value={contaId} items={itensConta} onValueChange={(v) => setContaId(v ?? contaId)}>
               <SelectTrigger className="h-14 w-full text-xl font-semibold" aria-label={t('conta')}>
                 <SelectValue />
@@ -169,8 +177,8 @@ export function ConfirmacaoVoz({
                 ))}
               </SelectContent>
             </Select>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className={LINHA}>
           <p className={ROTULO}>{t('categoria')}</p>
@@ -192,7 +200,7 @@ export function ConfirmacaoVoz({
         <div className="mx-auto flex w-full max-w-md flex-col gap-2">
           <Button
             type="button"
-            disabled={pendente || semConta}
+            disabled={pendente}
             onClick={salvar}
             className="h-16 w-full bg-marca text-xl font-semibold text-marca-foreground hover:bg-marca/90"
           >

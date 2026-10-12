@@ -11,11 +11,16 @@ export type OpcoesRelatorio = {
   tipo: TipoExportacao
   mostrarTotal: boolean
   anotacoes: 'descricao' | 'branco'
+  /** Sem período (voz): ignora `de`/`ate`; o rótulo do período vem da menor e da maior data das linhas. */
+  todoPeriodo?: boolean
 }
 
 export type Relatorio = {
   titulo: string
   periodo: string
+  /** Extremos reais do período, 'YYYY-MM-DD' (ausentes sem linhas em "todo o período"). */
+  de?: string
+  ate?: string
   linhas: { data: string; anotacao: string; valor: string }[]
   total?: string
 }
@@ -32,7 +37,7 @@ export const TITULO_PADRAO = 'Transações efetuadas'
 export function montarRelatorio(lancamentos: LancamentoExportavel[], op: OpcoesRelatorio): Relatorio {
   const nome = op.favorecido.trim().replace(/\s+/g, ' ') || 'Todos'
   const selecionados = lancamentos
-    .filter((l) => l.data >= op.de && l.data <= op.ate)
+    .filter((l) => op.todoPeriodo || (l.data >= op.de && l.data <= op.ate))
     .filter((l) => (op.tipo === 'saidas' ? l.valorCentavos < 0 : op.tipo === 'entradas' ? l.valorCentavos > 0 : true))
     .map((l, i) => ({ l, i }))
     .sort((a, b) => (a.l.data < b.l.data ? -1 : a.l.data > b.l.data ? 1 : a.i - b.i))
@@ -40,9 +45,15 @@ export function montarRelatorio(lancamentos: LancamentoExportavel[], op: OpcoesR
 
   const exibido = (l: LancamentoExportavel) => (op.tipo === 'todas' ? l.valorCentavos : Math.abs(l.valorCentavos))
 
+  // Todo o período: o intervalo é o das próprias linhas (já ordenadas por data).
+  const de = op.todoPeriodo ? selecionados[0]?.data : op.de
+  const ate = op.todoPeriodo ? selecionados[selecionados.length - 1]?.data : op.ate
+  const periodo = de !== undefined && ate !== undefined ? `${formatarDataBR(de)} a ${formatarDataBR(ate)}` : 'Todo o período'
+
   const r: Relatorio = {
     titulo: `${TITULO_PADRAO} | ${nome}`,
-    periodo: `${formatarDataBR(op.de)} a ${formatarDataBR(op.ate)}`,
+    periodo,
+    ...(de !== undefined && ate !== undefined ? { de, ate } : {}),
     linhas: selecionados.map((l) => ({
       data: formatarDataBR(l.data),
       anotacao: op.anotacoes === 'branco' ? '' : l.descricao.replace(/\s+/g, ' ').trim(),

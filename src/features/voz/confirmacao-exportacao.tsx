@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { DownloadIcon, FileTextIcon, Share2Icon } from 'lucide-react'
+import { DownloadIcon, Share2Icon } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { buscarLancamentosParaExportar } from '@/features/exportacao/actions'
-import { baixarPdf, baixarPng, compartilharPng, type BaseArquivo } from '@/features/exportacao/arquivos'
+import { baixarPng, compartilharPng, type BaseArquivo } from '@/features/exportacao/arquivos'
 import { montarRelatorio } from '@/features/exportacao/relatorio'
 import type { ResultadoExportacao } from '@/features/exportacao/servico'
 import { sugerirFavorecidos } from '@/features/exportacao/sugerir-favorecidos'
@@ -52,11 +52,18 @@ export function ConfirmacaoExportacao({
   const [aviso, setAviso] = useState<{ texto: string; erro: boolean } | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const hoje = hojeLocal()
-  const chave = `${favorecido}|${cmd.de}|${cmd.ate}|${cmd.filtroTipo}`
+  const todo = cmd.todoPeriodo === true
+  const chave = `${favorecido}|${cmd.de}|${cmd.ate}|${cmd.filtroTipo}|${todo}`
 
   useEffect(() => {
     let cancelado = false
-    buscarLancamentosParaExportar(dados.workspaceId, { favorecido, de: cmd.de, ate: cmd.ate, tipo: cmd.filtroTipo }).then(
+    buscarLancamentosParaExportar(dados.workspaceId, {
+      favorecido,
+      de: cmd.de,
+      ate: cmd.ate,
+      tipo: cmd.filtroTipo,
+      todoPeriodo: todo,
+    }).then(
       (r) => {
         if (!cancelado) setBusca({ chave, resultado: r.ok ? r : { ok: false, erro: r.erro } })
       },
@@ -67,7 +74,7 @@ export function ConfirmacaoExportacao({
     return () => {
       cancelado = true
     }
-  }, [dados.workspaceId, favorecido, cmd.de, cmd.ate, cmd.filtroTipo, chave, t])
+  }, [dados.workspaceId, favorecido, cmd.de, cmd.ate, cmd.filtroTipo, todo, chave, t])
 
   const atual = busca?.chave === chave
   const resultado = atual ? busca.resultado : null
@@ -83,14 +90,18 @@ export function ConfirmacaoExportacao({
             ate: cmd.ate,
             tipo: cmd.filtroTipo,
             mostrarTotal: false,
-            anotacoes: 'descricao',
+            // Como no layout de referência: a coluna Anotações sai em branco (a tela de exportar liga a descrição).
+            anotacoes: 'branco',
+            todoPeriodo: todo,
           })
         : null,
-    [dadosBusca, nome, cmd.de, cmd.ate, cmd.filtroTipo],
+    [dadosBusca, nome, cmd.de, cmd.ate, cmd.filtroTipo, todo],
   )
   const previa = usePrevia(relatorio)
 
   const quantidade = relatorio?.linhas.length ?? 0
+  const inicio = relatorio?.de ?? cmd.de
+  const fim = relatorio?.ate ?? cmd.ate
   const naoExiste = dadosBusca !== null && favorecido.trim() !== '' && !dadosBusca.existe
   const sugestoes = useMemo(() => {
     if (!naoExiste) return []
@@ -110,27 +121,31 @@ export function ConfirmacaoExportacao({
         ? t('exportar.querDizer', { nome: favorecido, sugestoes: sugestoes.map((s) => s.nome).join(t('exportar.ou')) })
         : t('exportar.naoExiste', { nome: favorecido })
     }
-    if (quantidade === 0) return t('exportar.nenhuma')
+    if (quantidade === 0) {
+      if (todo) return nome ? t('exportar.nenhumaParaTudo', { nome }) : t('exportar.nenhumaTudo')
+      return t('exportar.nenhuma')
+    }
     const qtd = quantidade === 1 ? t('exportar.umaTransacao') : t('exportar.transacoes', { n: quantidadeFalada(quantidade) })
-    const de = dataFalada(cmd.de, hoje)
-    const ate = dataFalada(cmd.ate, hoje)
-    if (cmd.de === cmd.ate) {
+    // Sem período falado, o intervalo é o das próprias transações (menor e maior data).
+    const de = dataFalada(inicio, hoje)
+    const ate = dataFalada(fim, hoje)
+    if (inicio === fim) {
       return nome ? t('exportar.encontrouDia', { quantidade: qtd, nome, de }) : t('exportar.encontrouTodosDia', { quantidade: qtd, de })
     }
     return nome
       ? t('exportar.encontrou', { quantidade: qtd, nome, de, ate })
       : t('exportar.encontrouTodos', { quantidade: qtd, de, ate })
-  }, [atual, resultado, naoExiste, sugestoes, quantidade, favorecido, nome, cmd.de, cmd.ate, hoje, t])
+  }, [atual, resultado, naoExiste, sugestoes, quantidade, favorecido, nome, todo, inicio, fim, hoje, t])
 
   // Efeito só de áudio (nenhum estado é alterado aqui).
   useEffect(() => {
     if (mensagem) falar(mensagem)
   }, [mensagem])
 
-  const base: BaseArquivo = { nome: nome || 'todos', de: cmd.de, ate: cmd.ate }
+  const base: BaseArquivo = { nome: nome || 'todos', de: inicio, ate: fim }
   const pronto = quantidade > 0 && !previa.gerando && previa.blobs.length > 0
   const ajustar = (() => {
-    const p = new URLSearchParams({ de: cmd.de, ate: cmd.ate })
+    const p = new URLSearchParams(todo ? { todo: '1' } : { de: cmd.de, ate: cmd.ate })
     if (nome) p.set('favorecido', nome)
     if (cmd.filtroTipo !== 'saidas') p.set('tipo', cmd.filtroTipo)
     return `/w/${dados.workspaceId}/exportar?${p}`
@@ -167,7 +182,7 @@ export function ConfirmacaoExportacao({
           </p>
         )}
 
-        {atual && quantidade === 0 && !naoExiste && resultado?.ok && (
+        {atual && quantidade === 0 && !naoExiste && !todo && resultado?.ok && (
           <p className="text-lg text-muted-foreground">
             {t('exportar.periodoUsado', { de: dataFalada(cmd.de, hoje), ate: dataFalada(cmd.ate, hoje) })}
           </p>
@@ -228,39 +243,22 @@ export function ConfirmacaoExportacao({
                 <Share2Icon aria-hidden className="size-6" />
                 {t('exportar.compartilhar')}
               </Button>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={ocupado}
-                  onClick={() =>
-                    executar(async () => {
-                      baixarPng(previa.blobs, base)
-                      return t('exportar.baixado')
-                    })
-                  }
-                  className="h-14 gap-2 text-lg"
-                >
-                  <DownloadIcon aria-hidden className="size-5" />
-                  {t('exportar.baixar')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={ocupado || !relatorio}
-                  onClick={() =>
-                    executar(async () => {
-                      if (!relatorio) return null
-                      await baixarPdf(relatorio, base)
-                      return t('exportar.baixado')
-                    })
-                  }
-                  className="h-14 gap-2 text-lg"
-                >
-                  <FileTextIcon aria-hidden className="size-5" />
-                  {t('exportar.pdf')}
-                </Button>
-              </div>
+              {/* Na voz só a imagem (PNG): o PDF fica na tela de exportar, como ação secundária. */}
+              <Button
+                type="button"
+                variant="outline"
+                disabled={ocupado}
+                onClick={() =>
+                  executar(async () => {
+                    baixarPng(previa.blobs, base)
+                    return t('exportar.baixado')
+                  })
+                }
+                className="h-14 w-full gap-2 text-lg"
+              >
+                <DownloadIcon aria-hidden className="size-5" />
+                {t('exportar.baixar')}
+              </Button>
             </>
           )}
           <Button type="button" variant="outline" onClick={aoFalarDeNovo} className="h-14 w-full text-lg">

@@ -11,7 +11,7 @@ import { FAVORECIDO_MAX, normalizarFavorecido } from '@/features/favorecido/norm
 import { cn } from '@/lib/utils'
 import { buscarLancamentosParaExportar } from './actions'
 import { baixarPdf, baixarPng, compartilharPng, type BaseArquivo } from './arquivos'
-import { resolverPeriodo } from './periodos'
+import { PERIODO_TUDO, resolverPeriodo } from './periodos'
 import { montarRelatorio, type TipoExportacao } from './relatorio'
 import type { ResultadoExportacao } from './servico'
 import { sugerirFavorecidos } from './sugerir-favorecidos'
@@ -30,6 +30,8 @@ type Props = {
     tipo: TipoExportacao
     total: boolean
     anotacoes: 'descricao' | 'branco'
+    /** Todo o período (sem filtro de data). */
+    todo: boolean
   }
 }
 
@@ -38,6 +40,7 @@ type Busca = {
   de: string
   ate: string
   tipo: TipoExportacao
+  todo: boolean
   favorecido: string
   resultado: { ok: true; data: ResultadoExportacao } | { ok: false; erro: string }
 }
@@ -80,44 +83,55 @@ export function PaginaExportar({ workspaceId, favorecidos, hoje, inicial }: Prop
   const [ate, setAte] = useState(inicial.ate)
   const [tipo, setTipo] = useState<TipoExportacao>(inicial.tipo)
   const [mostrarTotal, setMostrarTotal] = useState(inicial.total)
-  const [anotacoes, setAnotacoes] = useState(inicial.anotacoes)
+  // Padrão da referência: coluna Anotações em branco; o interruptor liga a descrição do lançamento.
+  const [mostrarDescricao, setMostrarDescricao] = useState(inicial.anotacoes === 'descricao')
+  const [todo, setTodo] = useState(inicial.todo)
   const [busca, setBusca] = useState<Busca | null>(null)
   const [aviso, setAviso] = useState<{ texto: string; erro: boolean } | null>(null)
   const [ocupado, setOcupado] = useState(false)
 
   const favorecidoTxt = favorecido.trim()
-  const periodoValido = de !== '' && ate !== '' && de <= ate
-  const chaveBusca = `${favorecidoTxt}|${de}|${ate}|${tipo}`
+  const periodoValido = todo || (de !== '' && ate !== '' && de <= ate)
+  const chaveBusca = `${favorecidoTxt}|${todo ? 'tudo' : `${de}|${ate}`}|${tipo}`
 
   // Busca no servidor (com pequena espera enquanto se digita). Só leitura.
   useEffect(() => {
     if (!periodoValido) return
     let cancelado = false
     const timer = setTimeout(async () => {
-      const r = await buscarLancamentosParaExportar(workspaceId, { favorecido: favorecidoTxt, de, ate, tipo })
+      const r = await buscarLancamentosParaExportar(workspaceId, {
+        favorecido: favorecidoTxt,
+        de: todo ? PERIODO_TUDO.de : de,
+        ate: todo ? PERIODO_TUDO.ate : ate,
+        tipo,
+        todoPeriodo: todo,
+      })
       if (!cancelado) {
-        setBusca({ chave: chaveBusca, de, ate, tipo, favorecido: favorecidoTxt, resultado: r.ok ? r : { ok: false, erro: r.erro } })
+        setBusca({ chave: chaveBusca, de, ate, tipo, todo, favorecido: favorecidoTxt, resultado: r.ok ? r : { ok: false, erro: r.erro } })
       }
     }, 300)
     return () => {
       cancelado = true
       clearTimeout(timer)
     }
-  }, [workspaceId, favorecidoTxt, de, ate, tipo, periodoValido, chaveBusca])
+  }, [workspaceId, favorecidoTxt, de, ate, tipo, todo, periodoValido, chaveBusca])
 
   // Parâmetros na URL: a tela pode ser aberta já preenchida (voz, lista de lançamentos) e recarregada.
   useEffect(() => {
     const p = new URLSearchParams()
     if (favorecidoTxt) p.set('favorecido', favorecidoTxt)
     if (nomeTitulo.trim()) p.set('nome', nomeTitulo.trim())
-    if (de) p.set('de', de)
-    if (ate) p.set('ate', ate)
+    if (todo) p.set('todo', '1')
+    else {
+      if (de) p.set('de', de)
+      if (ate) p.set('ate', ate)
+    }
     if (tipo !== 'saidas') p.set('tipo', tipo)
     if (mostrarTotal) p.set('total', '1')
-    if (anotacoes === 'branco') p.set('anotacoes', 'branco')
+    if (mostrarDescricao) p.set('anotacoes', 'descricao')
     const qs = p.toString()
     window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname)
-  }, [favorecidoTxt, nomeTitulo, de, ate, tipo, mostrarTotal, anotacoes])
+  }, [favorecidoTxt, nomeTitulo, de, ate, tipo, todo, mostrarTotal, mostrarDescricao])
 
   const atual = busca?.chave === chaveBusca
   const dados = busca?.resultado.ok ? busca.resultado.data : null
@@ -133,10 +147,11 @@ export function PaginaExportar({ workspaceId, favorecidos, hoje, inicial }: Prop
             ate: busca.ate,
             tipo: busca.tipo,
             mostrarTotal,
-            anotacoes,
+            anotacoes: mostrarDescricao ? 'descricao' : 'branco',
+            todoPeriodo: busca.todo,
           })
         : null,
-    [busca, dados, nomeEfetivo, mostrarTotal, anotacoes],
+    [busca, dados, nomeEfetivo, mostrarTotal, mostrarDescricao],
   )
   const previa = usePrevia(relatorio)
 
@@ -145,11 +160,17 @@ export function PaginaExportar({ workspaceId, favorecidos, hoje, inicial }: Prop
   const naoExiste = atual && dados !== null && favorecidoTxt !== '' && normalizarFavorecido(favorecidoTxt) !== '' && !dados.existe
   const sugestoes = naoExiste ? sugerirFavorecidos(favorecidoTxt, favorecidos) : []
   const pronto = atual && relatorio !== null && relatorio.linhas.length > 0 && !previa.gerando && previa.blobs.length > 0
-  const base: BaseArquivo = { nome: nomeEfetivo || 'todos', de: busca?.de ?? de, ate: busca?.ate ?? ate }
+  // Em "todo o período" os nomes dos arquivos usam o intervalo real das linhas.
+  const base: BaseArquivo = {
+    nome: nomeEfetivo || 'todos',
+    de: relatorio?.de ?? busca?.de ?? de,
+    ate: relatorio?.ate ?? busca?.ate ?? ate,
+  }
 
   function atalho(texto: string) {
     const p = resolverPeriodo(texto, hoje)
     if (p) {
+      setTodo(false)
       setDe(p.de)
       setAte(p.ate)
     }
@@ -242,6 +263,15 @@ export function PaginaExportar({ workspaceId, favorecidos, hoje, inicial }: Prop
         <fieldset className="flex flex-col gap-2">
           <legend className={ROTULO}>{t('periodo')}</legend>
           <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed={todo}
+              className={cn('h-12 px-4 text-base', todo && 'border-marca bg-marca text-marca-foreground hover:bg-marca/90')}
+              onClick={() => setTodo(true)}
+            >
+              {t('atalhos.todo')}
+            </Button>
             {(
               [
                 ['esteMes', 'este mês'],
@@ -257,14 +287,37 @@ export function PaginaExportar({ workspaceId, favorecidos, hoje, inicial }: Prop
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="exp-de">{t('de')}</Label>
-              <Input id="exp-de" type="date" value={de} onChange={(e) => setDe(e.target.value)} className="h-14 text-lg md:text-lg" />
+              <Input
+                id="exp-de"
+                type="date"
+                value={de}
+                onChange={(e) => {
+                  setTodo(false)
+                  setDe(e.target.value)
+                }}
+                className={cn('h-14 text-lg md:text-lg', todo && 'opacity-50')}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="exp-ate">{t('ate')}</Label>
-              <Input id="exp-ate" type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="h-14 text-lg md:text-lg" />
+              <Input
+                id="exp-ate"
+                type="date"
+                value={ate}
+                onChange={(e) => {
+                  setTodo(false)
+                  setAte(e.target.value)
+                }}
+                className={cn('h-14 text-lg md:text-lg', todo && 'opacity-50')}
+              />
             </div>
           </div>
-          {!periodoValido && de !== '' && ate !== '' && (
+          {todo && (
+            <p role="status" className="text-base text-muted-foreground">
+              {t('todoDica')}
+            </p>
+          )}
+          {!todo && !periodoValido && de !== '' && ate !== '' && (
             <p role="alert" className="text-base font-medium text-destructive">
               {t('periodoInvertido')}
             </p>
@@ -282,17 +335,18 @@ export function PaginaExportar({ workspaceId, favorecidos, hoje, inicial }: Prop
           </div>
         </fieldset>
 
-        <fieldset className="flex flex-col gap-2">
-          <legend className={ROTULO}>{t('anotacoes.titulo')}</legend>
-          <div className="flex gap-2">
-            <Segmento ativo={anotacoes === 'descricao'} aoClicar={() => setAnotacoes('descricao')}>
-              {t('anotacoes.descricao')}
-            </Segmento>
-            <Segmento ativo={anotacoes === 'branco'} aoClicar={() => setAnotacoes('branco')}>
-              {t('anotacoes.branco')}
-            </Segmento>
-          </div>
-        </fieldset>
+        <div className="flex items-center gap-3 rounded-xl border p-4">
+          <Checkbox
+            id="exp-descricao"
+            checked={mostrarDescricao}
+            onCheckedChange={(v) => setMostrarDescricao(v === true)}
+            className="size-7 rounded-md"
+          />
+          <Label htmlFor="exp-descricao" className="min-h-8 flex-1 text-lg font-medium">
+            {t('mostrarDescricao')}
+          </Label>
+        </div>
+        <p className="-mt-3 text-sm text-muted-foreground">{t('mostrarDescricaoDica')}</p>
 
         <div className="flex items-center gap-3 rounded-xl border p-4">
           <Checkbox id="exp-total" checked={mostrarTotal} onCheckedChange={(v) => setMostrarTotal(v === true)} className="size-7 rounded-md" />
@@ -375,22 +429,21 @@ export function PaginaExportar({ workspaceId, favorecidos, hoje, inicial }: Prop
             <Share2Icon aria-hidden className="size-6" />
             {t('compartilhar')}
           </Button>
-          <div className="grid grid-cols-2 gap-2">
-            <Button type="button" variant="outline" disabled={!pronto || ocupado} onClick={baixarImagens} className={botaoAcao}>
-              <DownloadIcon aria-hidden className="size-5" />
-              {t('baixarPng')}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!atual || !relatorio || relatorio.linhas.length === 0 || ocupado}
-              onClick={baixarDocumento}
-              className={botaoAcao}
-            >
-              <FileTextIcon aria-hidden className="size-5" />
-              {t('baixarPdf')}
-            </Button>
-          </div>
+          <Button type="button" variant="outline" disabled={!pronto || ocupado} onClick={baixarImagens} className={botaoAcao}>
+            <DownloadIcon aria-hidden className="size-5" />
+            {t('baixarPng')}
+          </Button>
+          {/* O PDF é secundário: a imagem (PNG) é o formato principal e o único da voz. */}
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={!atual || !relatorio || relatorio.linhas.length === 0 || ocupado}
+            onClick={baixarDocumento}
+            className="h-12 w-full gap-2 text-base font-medium text-muted-foreground"
+          >
+            <FileTextIcon aria-hidden className="size-4" />
+            {t('baixarPdf')}
+          </Button>
           <p role="status" aria-live="polite" className={cn('min-h-6 text-base font-medium', aviso?.erro && 'text-destructive')}>
             {aviso?.texto}
           </p>

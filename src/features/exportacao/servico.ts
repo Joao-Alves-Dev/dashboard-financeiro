@@ -15,6 +15,8 @@ export type ParamsExportacao = {
   de: string
   ate: string
   tipo: TipoExportacao
+  /** Sem filtro de data ("exporte tudo do Roberto"): `de`/`ate` são ignorados. */
+  todoPeriodo?: boolean
 }
 
 export type ResultadoExportacao = {
@@ -40,9 +42,8 @@ export async function listarLancamentosParaExportarDoUsuario(
   const condicoes: (SQL | undefined)[] = [
     eq(lancamentos.workspaceId, ws),
     eq(lancamentos.status, 'efetivado'),
-    gte(lancamentos.data, p.de),
-    lte(lancamentos.data, p.ate),
   ]
+  if (!p.todoPeriodo) condicoes.push(gte(lancamentos.data, p.de), lte(lancamentos.data, p.ate))
   if (filtraFavorecido) {
     // Só um tratamento ("senhor") dá chave vazia: não casa com nada em vez de virar "todos".
     condicoes.push(chave ? eq(lancamentos.favorecidoChave, chave) : sql`false`)

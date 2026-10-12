@@ -3,35 +3,54 @@ import type { Relatorio } from './relatorio'
 /** Mede a largura de um texto na unidade do layout (px no PNG, pt no PDF). */
 export type Medir = (texto: string, tamanho: number, negrito: boolean) => number
 
-export type Tamanhos = {
-  titulo: number
-  periodo: number
-  cabecalho: number
-  linha: number
-  total: number
-  rodape: number
-  margem: number
-  padLinha: number
-}
+/**
+ * Layout do PNG, a partir da imagem de referência (1800px de largura): fundo cinza claro; título em negrito
+ * grande com uma barra vertical e o nome do favorecido na mesma linha; um cartão branco de cantos bem
+ * arredondados com o cabeçalho "Data | Anotações | Valor" e linhas de 170px (ponto azul, data, anotação
+ * opcional, valor em negrito à direita). Sem zebra. As medidas abaixo foram tiradas da referência.
+ */
+export const LARGURA_PNG = 1800
+/** Acima disso o relatório vira várias imagens (cada uma com título, cabeçalho e rodapé "Parte i/N"). */
+export const LINHAS_POR_IMAGEM = 12
 
-export const LARGURA_PNG = 1080
-export const LINHAS_POR_IMAGEM = 25
-/** Letras grandes para ler no celular (e por quem enxerga pouco): linhas em 36px numa imagem de 1080px. */
-export const TAMANHOS_PNG: Tamanhos = {
-  titulo: 56,
-  periodo: 34,
-  cabecalho: 30,
-  linha: 36,
-  total: 40,
-  rodape: 26,
-  margem: 56,
-  padLinha: 18,
-}
+/**
+ * Fonte do canvas. O Inter (a fonte da referência) só entra se estiver instalada no aparelho: `next/font`
+ * não alcança um canvas, então a pilha cai para a fonte do sistema (alto contraste e acentos garantidos).
+ */
+export const FONTE_PNG = 'Inter, system-ui, Arial, sans-serif'
+
+const M = {
+  margem: 100, // esquerda do título e do cartão; margem inferior
+  topoTitulo: 80, // topo da barra e do título
+  titulo: 72,
+  barraW: 8,
+  barraH: 80,
+  folgaBarra: 40, // entre o título e a barra, e entre a barra e o nome
+  cartaoY: 260,
+  cartaoW: 1600,
+  raio: 40,
+  cabecalhoH: 130, // topo do cartão até a linha sob o cabeçalho
+  cabecalho: 28,
+  linhaH: 170,
+  linha: 40,
+  anotacao: 34,
+  totalH: 150,
+  pontoRaio: 16,
+  rodape: 28,
+  // posições X (largura 1800)
+  dataLabelX: 170,
+  pontoX: 190,
+  dataX: 240,
+  anotX: 860,
+  valorX: 1630,
+  folgaValor: 50, // entre o fim da anotação e o começo do valor
+} as const
 
 /** Proporção entre o tamanho da fonte e a altura da caixa de uma linha de texto. */
 const ALTURA_LINHA = 1.25
-const MAX_LINHAS_TITULO = 3
+const MAX_LINHAS_NOME = 2
 const MAX_LINHAS_ANOTACAO = 2
+const SEPARADOR_TITULO = ' | '
 
 export type Texto = {
   texto: string
@@ -43,29 +62,36 @@ export type Texto = {
   tamanho: number
   negrito: boolean
   alinhar: 'esq' | 'dir'
+  /** 'principal' = azul-marinho escuro; 'secundaria' = cinza médio (rótulos, rodapé). */
   cor: 'principal' | 'secundaria'
 }
 
-export type LinhaLayout = { y: number; altura: number; zebra: boolean; separadorY: number; textos: Texto[] }
+export type Retangulo = { x: number; y: number; w: number; h: number }
+
+export type LinhaLayout = {
+  y: number
+  altura: number
+  ponto: { cx: number; cy: number; raio: number }
+  /** Linha fina abaixo desta; nula na última linha (a borda do cartão, ou a linha do total, fecha). */
+  separadorY: number | null
+  textos: Texto[]
+}
 
 export type PaginaLayout = {
   altura: number
-  titulo: Texto[]
-  periodo: Texto
-  cabecalho: { y: number; altura: number; linhaY: number; textos: Texto[] }
+  titulo: { textos: Texto[]; barra: Retangulo | null }
+  cartao: Retangulo & { raio: number }
+  cabecalho: { textos: Texto[]; linhaY: number }
   linhas: LinhaLayout[]
   total?: { y: number; altura: number; linhaY: number; textos: Texto[] }
   rodape?: Texto
 }
 
-export type LayoutRelatorio = { largura: number; margem: number; paginas: PaginaLayout[] }
+export type LayoutRelatorio = { largura: number; paginas: PaginaLayout[] }
 
 export type OpcoesLayout = {
-  tamanhos?: Tamanhos
-  /** Máximo de linhas por imagem/página (padrão 25). */
+  /** Máximo de linhas por imagem (padrão 12). */
   linhasPorPagina?: number
-  /** Altura fixa da página (PDF): empacota linhas até caber. Sem isso, a altura segue o conteúdo. */
-  alturaMaxima?: number
   rotuloRodape?: (pagina: number, total: number) => string
 }
 
@@ -111,10 +137,21 @@ export function quebrarTexto(texto: string, larguraMax: number, medir: (s: strin
   return ficam
 }
 
+const txt = (
+  texto: string,
+  x: number,
+  centroY: number,
+  tamanho: number,
+  negrito: boolean,
+  alinhar: 'esq' | 'dir' = 'esq',
+  cor: Texto['cor'] = 'principal',
+): Texto => ({ texto, x, y: centroY - (tamanho * ALTURA_LINHA) / 2, h: tamanho * ALTURA_LINHA, tamanho, negrito, alinhar, cor })
+
 /**
- * Posições de tudo que vai na imagem/página (puro; a medida do texto é injetada). Cada parte repete
- * título, período e cabeçalho; o total (se houver) fica só na última; rodapé "Parte i/N" quando há mais
- * de uma. O desenho (canvas ou PDF) apenas percorre este resultado.
+ * Posições de tudo que vai em cada imagem (puro; a medida do texto é injetada). Cada parte repete título e
+ * cabeçalho; o total (se houver) fica só na última; rodapé "Parte i/N" quando há mais de uma. O desenho
+ * (canvas) apenas percorre este resultado. O período do relatório NÃO é desenhado (a referência não o tem;
+ * as datas das linhas já o mostram).
  */
 export function calcularLayoutRelatorio(
   r: Relatorio,
@@ -122,125 +159,112 @@ export function calcularLayoutRelatorio(
   medir: Medir,
   op: OpcoesLayout = {},
 ): LayoutRelatorio {
-  const T = op.tamanhos ?? TAMANHOS_PNG
-  const porPagina = op.linhasPorPagina ?? LINHAS_POR_IMAGEM
+  const porPagina = Math.max(1, op.linhasPorPagina ?? LINHAS_POR_IMAGEM)
   const rotuloRodape = op.rotuloRodape ?? ((i, n) => `Parte ${i}/${n}`)
-  const xDir = largura - T.margem
-  const W = largura - 2 * T.margem
+  const xCartaoDir = M.margem + M.cartaoW // 1700
+  const cartaoX = M.margem
 
-  // Colunas: Data e Valor ocupam o que o conteúdo pede; Anotações fica com o resto.
-  const gap = T.linha * 0.7
-  const dataW = Math.max(
-    medir('00/00/0000', T.linha, false),
-    medir('Data', T.cabecalho, true),
-    ...r.linhas.map((l) => medir(l.data, T.linha, false)),
-  )
+  // ---- título: "Transações efetuadas" | nome (a barra só existe quando há nome) ----
+  const corte = r.titulo.indexOf(SEPARADOR_TITULO)
+  const base = corte === -1 ? r.titulo : r.titulo.slice(0, corte)
+  const nome = corte === -1 ? '' : r.titulo.slice(corte + SEPARADOR_TITULO.length)
+  const altTitulo = M.titulo * ALTURA_LINHA // 90
+  const centro1 = M.topoTitulo + M.barraH / 2 // 120
+  const textosTitulo: Texto[] = []
+  let barra: Retangulo | null = null
+  let linhasExtras = 0
+  if (nome === '') {
+    const ls = quebrarTexto(base, xCartaoDir - M.margem, (s) => medir(s, M.titulo, true), MAX_LINHAS_NOME)
+    ls.forEach((l, i) => textosTitulo.push(txt(l, M.margem, centro1 + i * altTitulo, M.titulo, true)))
+    linhasExtras = ls.length - 1
+  } else {
+    textosTitulo.push(txt(base, M.margem, centro1, M.titulo, true))
+    const barraX = M.margem + medir(base, M.titulo, true) + M.folgaBarra
+    const nomeX = barraX + M.barraW + M.folgaBarra
+    const ls = quebrarTexto(nome, xCartaoDir - nomeX, (s) => medir(s, M.titulo, true), MAX_LINHAS_NOME)
+    ls.forEach((l, i) => textosTitulo.push(txt(l, nomeX, centro1 + i * altTitulo, M.titulo, true)))
+    linhasExtras = ls.length - 1
+    barra = { x: barraX, y: M.topoTitulo, w: M.barraW, h: M.barraH + linhasExtras * altTitulo }
+  }
+  const cartaoY = M.cartaoY + linhasExtras * altTitulo
+
+  // ---- colunas: a anotação ocupa o que sobra entre x 860 e o valor ----
   const valorW = Math.max(
-    medir('Valor', T.cabecalho, true),
-    ...r.linhas.map((l) => medir(l.valor, T.linha, true)),
-    r.total ? medir(r.total, T.total, true) : 0,
+    medir('Valor', M.cabecalho, false),
+    ...r.linhas.map((l) => medir(l.valor, M.linha, true)),
+    r.total ? medir(r.total, M.linha, true) : 0,
   )
-  const anotX = T.margem + dataW + gap
-  const anotW = Math.max(T.linha * 4, xDir - valorW - gap - anotX)
+  const anotW = Math.max(M.linha * 6, M.valorX - valorW - M.folgaValor - M.anotX)
 
-  const tituloLinhas = quebrarTexto(r.titulo, W, (s) => medir(s, T.titulo, true), MAX_LINHAS_TITULO)
-  const txt = (
-    texto: string,
-    x: number,
-    y: number,
-    tamanho: number,
-    negrito: boolean,
-    alinhar: 'esq' | 'dir' = 'esq',
-    cor: Texto['cor'] = 'principal',
-  ): Texto => ({ texto, x, y, h: tamanho * ALTURA_LINHA, tamanho, negrito, alinhar, cor })
-
-  // Bloco fixo do topo (igual em todas as partes).
-  let y = T.margem
-  const titulo = tituloLinhas.map((l) => {
-    const t = txt(l, T.margem, y, T.titulo, true)
-    y += T.titulo * 1.2
-    return t
-  })
-  y += T.titulo * 0.12
-  const periodo = txt(r.periodo, T.margem, y, T.periodo, false, 'esq', 'secundaria')
-  y += T.periodo * 1.3 + T.periodo * 0.8
-  const cabY = y
-  const cabAltura = T.cabecalho * 1.3 + 28
-  const cabTextoY = cabY + 14
-  const cabecalho = {
-    y: cabY,
-    altura: cabAltura,
-    linhaY: cabY + cabAltura,
-    textos: [
-      txt('Data', T.margem, cabTextoY, T.cabecalho, true),
-      txt('Anotações', anotX, cabTextoY, T.cabecalho, true),
-      txt('Valor', xDir, cabTextoY, T.cabecalho, true, 'dir'),
-    ],
-  }
-  const topoLinhas = cabecalho.linhaY
-
-  // Linhas, já com altura (anotação pode ocupar duas linhas).
-  const preparadas = r.linhas.map((l, i) => {
-    const anot = quebrarTexto(l.anotacao, anotW, (s) => medir(s, T.linha, false), MAX_LINHAS_ANOTACAO)
-    return { l, i, anot, altura: anot.length * T.linha * ALTURA_LINHA + 2 * T.padLinha }
-  })
-  const totalAltura = T.total * 1.3 + 2 * T.padLinha
-  const rodapeAltura = T.rodape * 1.3
-  const reservaRodape = rodapeAltura + T.margem * 0.6
-  const limite = op.alturaMaxima === undefined ? Infinity : op.alturaMaxima - T.margem * 0.6 - reservaRodape
-
-  // Paginação: por quantidade e, se houver altura fixa, também por espaço.
-  const grupos: (typeof preparadas)[] = []
-  let atual: typeof preparadas = []
-  let usado = topoLinhas
-  for (const p of preparadas) {
-    if (atual.length > 0 && (atual.length >= porPagina || usado + p.altura > limite)) {
-      grupos.push(atual)
-      atual = []
-      usado = topoLinhas
-    }
-    atual.push(p)
-    usado += p.altura
-  }
-  grupos.push(atual)
-  // Total sem espaço na última página: vai sozinho para uma página nova.
-  if (r.total && atual.length > 0 && usado + totalAltura > limite) grupos.push([])
-
+  // ---- páginas ----
+  const grupos: Relatorio['linhas'][] = []
+  for (let i = 0; i < r.linhas.length; i += porPagina) grupos.push(r.linhas.slice(i, i + porPagina))
+  if (grupos.length === 0) grupos.push([])
   const n = grupos.length
+
   const paginas = grupos.map((grupo, pi): PaginaLayout => {
-    let yy = topoLinhas
-    const linhas = grupo.map((p): LinhaLayout => {
-      const base = yy
-      const textos: Texto[] = [txt(p.l.data, T.margem, base + T.padLinha, T.linha, false)]
-      p.anot.forEach((a, k) => {
-        if (a !== '') textos.push(txt(a, anotX, base + T.padLinha + k * T.linha * ALTURA_LINHA, T.linha, false))
-      })
-      textos.push(txt(p.l.valor, xDir, base + T.padLinha, T.linha, true, 'dir'))
-      yy += p.altura
-      return { y: base, altura: p.altura, zebra: p.i % 2 === 1, separadorY: base + p.altura, textos }
+    const linhaCab = cartaoY + M.cabecalhoH
+    const cabCentro = cartaoY + 80
+    const cabecalho = {
+      textos: [
+        txt('Data', M.dataLabelX, cabCentro, M.cabecalho, false, 'esq', 'secundaria'),
+        txt('Anotações', M.anotX, cabCentro, M.cabecalho, false, 'esq', 'secundaria'),
+        txt('Valor', M.valorX, cabCentro, M.cabecalho, false, 'dir', 'secundaria'),
+      ],
+      linhaY: linhaCab,
+    }
+
+    const linhas = grupo.map((l, i): LinhaLayout => {
+      const y = linhaCab + i * M.linhaH
+      const centro = y + M.linhaH / 2
+      const textos: Texto[] = [txt(l.data, M.dataX, centro, M.linha, false)]
+      if (l.anotacao.trim() !== '') {
+        const ls = quebrarTexto(l.anotacao, anotW, (s) => medir(s, M.anotacao, false), MAX_LINHAS_ANOTACAO)
+        const passo = M.anotacao * ALTURA_LINHA
+        const topo = centro - (ls.length * passo) / 2
+        ls.forEach((a, k) => textos.push(txt(a, M.anotX, topo + k * passo + passo / 2, M.anotacao, false)))
+      }
+      textos.push(txt(l.valor, M.valorX, centro, M.linha, true, 'dir'))
+      const ultima = i === grupo.length - 1
+      return {
+        y,
+        altura: M.linhaH,
+        ponto: { cx: M.pontoX, cy: centro, raio: M.pontoRaio },
+        separadorY: ultima ? null : y + M.linhaH,
+        textos,
+      }
     })
+
+    let fim = linhaCab + grupo.length * M.linhaH
     let total: PaginaLayout['total']
     if (r.total && pi === n - 1) {
-      const ty = yy + T.padLinha
       total = {
-        y: yy,
-        altura: totalAltura,
-        linhaY: yy,
+        y: fim,
+        altura: M.totalH,
+        linhaY: fim,
         textos: [
-          txt('Total', T.margem, ty, T.total, true),
-          txt(r.total, xDir, ty, T.total, true, 'dir'),
+          txt('Total', M.dataLabelX, fim + M.totalH / 2, M.linha, true),
+          txt(r.total, M.valorX, fim + M.totalH / 2, M.linha, true, 'dir'),
         ],
       }
-      yy += totalAltura
+      fim += M.totalH
     }
-    const altura = op.alturaMaxima ?? yy + (n > 1 ? T.rodape * 0.6 + rodapeAltura : 0) + T.margem
-    let rodape: Texto | undefined
-    if (n > 1) {
-      const ry = op.alturaMaxima === undefined ? yy + T.rodape * 0.6 : altura - T.margem * 0.6 - rodapeAltura
-      rodape = txt(rotuloRodape(pi + 1, n), xDir, ry, T.rodape, false, 'dir', 'secundaria')
+
+    const cartao = { x: cartaoX, y: cartaoY, w: M.cartaoW, h: fim - cartaoY, raio: M.raio }
+    const rodape =
+      n > 1
+        ? txt(rotuloRodape(pi + 1, n), xCartaoDir, fim + 28 + (M.rodape * ALTURA_LINHA) / 2, M.rodape, false, 'dir', 'secundaria')
+        : undefined
+    return {
+      altura: fim + M.margem,
+      titulo: { textos: textosTitulo, barra },
+      cartao,
+      cabecalho,
+      linhas,
+      total,
+      rodape,
     }
-    return { altura, titulo, periodo, cabecalho, linhas, total, rodape }
   })
 
-  return { largura, margem: T.margem, paginas }
+  return { largura, paginas }
 }

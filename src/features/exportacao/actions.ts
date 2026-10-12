@@ -26,6 +26,7 @@ export async function buscarLancamentosParaExportar(
       de: v.data.de,
       ate: v.data.ate,
       tipo: v.data.tipo,
+      todoPeriodo: v.data.todoPeriodo,
     })
   })
 }

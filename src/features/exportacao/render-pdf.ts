@@ -1,4 +1,5 @@
-import { calcularLayoutRelatorio, type Tamanhos, type Texto } from './layout-relatorio'
+import { calcularLayoutPdf, type Tamanhos } from './layout-pdf'
+import type { Texto } from './layout-relatorio'
 import type { Relatorio } from './relatorio'
 
 // A4 retrato em pontos.
@@ -46,7 +47,7 @@ export async function renderizarPdf(r: Relatorio): Promise<Blob> {
     linhas: r.linhas.map((l) => ({ data: l.data, anotacao: paraPdf(l.anotacao), valor: paraPdf(l.valor) })),
     ...(r.total ? { total: paraPdf(r.total) } : {}),
   }
-  const layout = calcularLayoutRelatorio(
+  const layout = calcularLayoutPdf(
     limpo,
     LARGURA_A4,
     (texto, tamanho, negrito) => {

@@ -164,4 +164,30 @@ describe('exportação de lista por favorecido e período', () => {
     ])
     expect(rel.total).toBeUndefined()
   })
+
+  it('todoPeriodo traz TODAS as datas do favorecido, ignorando de/ate (Task 15d)', async () => {
+    await criarA({ valor: '40,00', data: '2024-03-10', descricao: 'Peças', favorecido: 'Roberto' })
+    await criarA({ valor: '60,00', data: '2026-10-09', descricao: 'Frete', favorecido: 'Roberto' })
+    // O intervalo passado exclui tudo, mas todoPeriodo manda: sem filtro de data.
+    const r = await exportar({ favorecidoChave: 'roberto', de: '2026-01-01', ate: '2026-01-02', todoPeriodo: true })
+    expect(r.itens.map((i) => i.data)).toEqual(['2024-03-10', '2026-10-09'])
+    // Sem a flag, o filtro de data vale.
+    expect((await exportar({ favorecidoChave: 'roberto', de: '2026-01-01', ate: '2026-01-02' })).itens).toEqual([])
+    // Todos os favorecidos: só efetivadas, de qualquer data, e o relatório rotula pelos extremos.
+    const todos = await exportar({ todoPeriodo: true, tipo: 'todas' })
+    expect(todos.itens.some((i) => i.data === '2024-03-10')).toBe(true)
+    expect(todos.itens.some((i) => i.descricao === 'Ainda não pago')).toBe(false)
+    const rel = montarRelatorio(r.itens, {
+      favorecido: 'Roberto',
+      de: '1900-01-01',
+      ate: '2200-12-31',
+      tipo: 'saidas',
+      mostrarTotal: false,
+      anotacoes: 'branco',
+      todoPeriodo: true,
+    })
+    expect(rel.periodo).toBe('10/03/2024 a 09/10/2026')
+    // B não vê o Roberto de A.
+    expect((await exportar({ favorecidoChave: 'roberto', todoPeriodo: true }, undefined, B, wsB)).itens).toEqual([])
+  })
 })
