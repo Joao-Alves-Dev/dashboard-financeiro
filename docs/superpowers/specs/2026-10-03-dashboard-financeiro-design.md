@@ -2,6 +2,8 @@
 
 > Revisão 2 (2026-10-03): adicionadas duas edições (pessoal/portfólio), metas de poupança, PWA com lançamento rápido e orientador financeiro por regras. Ver seções "Edições" em diante. IA generativa descartada por custo; pode ser plugada depois.
 >
+> Revisão 4 (2026-10-12): ajustes de uso em produção (Task 15d): data completa por voz, conta padrão invisível, exportação por voz sem período (= tudo) e PNG no layout de referência como formato principal. Ver seções Lançamento por voz, Favorecido e exportação e "Conta padrão invisível".
+>
 > Revisão 3 (2026-10-05): Supabase substituído por **Neon (Postgres) + Better Auth + Drizzle**. O plano grátis do Supabase limita 2 projetos ativos somando todas as organizações do usuário, e as duas vagas já estão em uso.
 
 ## Contexto
@@ -52,6 +54,7 @@ Ambientes Neon: cada projeto tem branch `main` (produção) e branch `dev` (dese
 - Tabelas do Better Auth (`user`, `session`, `account`, `verification`) ficam no mesmo banco, geradas pelo CLI do Better Auth; ids de usuário são `text`. `workspaces.criado_por` e `workspace_members.user_id` referenciam `user.id`.
 - FKs para `user` e para `workspaces` com `on delete cascade` (a limpeza da demo depende disso).
 - Categorias padrão criadas por função ao criar workspace (conjuntos diferentes para pessoal e empresa).
+- **Conta padrão invisível:** `criar_workspace` também cria a conta "Carteira" (`dinheiro`, saldo inicial 0). Workspaces criados antes disso (ou sem nenhuma conta) ganham a Carteira pelo app (`garantirContaPadraoDoUsuario`: `pg_advisory_xact_lock` + `insert ... where not exists` na mesma transação), sem depender da migração. Com UMA conta, nenhuma tela de lançamento (formulário, lançamento rápido, confirmação por voz) mostra seletor de conta: a conta única é usada em silêncio; com 2+ contas o seletor aparece. Em Configurações > Contas o saldo inicial é opcional (vazio = 0).
 
 **RLS (sem Supabase):**
 - O servidor identifica o usuário pela sessão do Better Auth e executa cada operação de domínio dentro de `comUsuario(userId, fn)`: abre uma transação, executa `select set_config('app.usuario_id', $1, true)` (válido só naquela transação) e chama `fn(tx)`.
@@ -70,8 +73,8 @@ Ambientes Neon: cada projeto tem branch `main` (produção) e branch `dev` (dese
 - `/` landing com "Entrar como demo" + login.
 - `/login` e-mail/senha.
 - `/novo` criar workspace.
-- `/w/[id]` dashboard: KPIs (saldo atual, entradas do mês, saídas do mês, resultado), barras entradas×saídas 12 meses, gastos por categoria (barras horizontais), orçamento vs realizado (barras de progresso), últimos lançamentos; no tipo Empresa, card "A pagar / A receber — 30 dias".
-- `/w/[id]/lancamentos` tabela filtrável, CRUD, categorizar em lote.
+- `/w/[id]` dashboard: KPIs (saldo atual, entradas do mês, saídas do mês, resultado; se NENHUMA conta tem saldo inicial diferente de 0, o primeiro KPI se chama "Resultado acumulado", pois não é um saldo bancário), barras entradas×saídas 12 meses, gastos por categoria (barras horizontais), orçamento vs realizado (barras de progresso), últimos lançamentos; no tipo Empresa, card "A pagar / A receber — 30 dias".
+- `/w/[id]/lancamentos` botão de voz no topo (o mesmo do painel, pois o pai trabalha nesta aba), tabela filtrável, CRUD, categorizar em lote.
 - `/w/[id]/importar` conta → upload → detecção de formato → (CSV: mapeamento de colunas, salvo na conta) → prévia (categoria sugerida, duplicados marcados, linhas inválidas com motivo) → confirmar; histórico com "desfazer".
 - `/w/[id]/orcamento` grade categoria × mês editável, "copiar mês anterior".
 - `/w/[id]/config` contas, categorias, regras.
@@ -88,6 +91,8 @@ Mesmo código, dois deploys. Variável `NEXT_PUBLIC_EDICAO` (`pessoal` | `portfo
 | Demo anônima (landing com botão demo) | não | sim |
 | Cadastro de novas contas | fechado (Better Auth com cadastro desabilitado no servidor; UI esconde) | aberto |
 | Metas, PWA, orientador | sim | sim |
+
+As duas edições compartilham o código e o mesmo contrato de migração: o código novo precisa funcionar antes de a migração correspondente ser aplicada na produção (o deploy da Vercel é automático a cada push em `main`; a migração é aplicada à mão com `npm run db:migrate:prod`).
 
 Infra: dois projetos Neon (`financeiro-pessoal`, `financeiro-portfolio`) com as mesmas migrações; dois projetos Vercel apontando para o mesmo repositório. Na edição pessoal, a conta do dono é criada por script (`npm run criar-usuario`) antes de fechar o cadastro. Na edição pessoal, `/` redireciona para `/login` ou para o último workspace.
 
@@ -115,14 +120,14 @@ Tabelas:
 
 Público principal: o pai do usuário (idoso, pouca familiaridade com digitação), que registra pagamentos e recebimentos falando. Custo zero: Web Speech API do navegador (`SpeechRecognition`/`webkitSpeechRecognition`, `lang: 'pt-BR'`, resultados parciais exibidos) e `speechSynthesis` para a confirmação falada. Requer HTTPS e permissão de microfone. No Chrome o áudio é processado por servidores do Google.
 
-**UI:** na tela inicial (`/w/[id]`), acima do dashboard, botão circular de microfone (~120px, cor de destaque, sombra, rótulo "Toque e fale"); pulsa enquanto escuta e mostra a transcrição parcial em fonte grande. Também acessível pelo **+** da barra inferior. Sem suporte no navegador: botão mostra "Use o Chrome para falar" e abre o lançamento rápido.
+**UI:** na tela inicial (`/w/[id]`), acima do dashboard, botão circular de microfone (~120px, cor de destaque, sombra, rótulo "Toque e fale", texto de ajuda com um exemplo de lançamento e um de exportação; o mesmo botão fica no topo de `/w/[id]/lancamentos`); pulsa enquanto escuta e mostra a transcrição parcial em fonte grande. Também acessível pelo **+** da barra inferior. Sem suporte no navegador: botão mostra "Use o Chrome para falar" e abre o lançamento rápido.
 
 **Fluxo:** fala → `interpretarFala` → tela de confirmação em tela cheia (valor grande com sinal e cor, descrição, data, conta, categoria) com botões grandes **"Está certo"** (salva via `criarLancamento`) e **"Falar de novo"**, e link "Corrigir" (abre lançamento rápido preenchido). Após salvar, fala "Anotado: <valor por extenso> <descrição>". Sem valor reconhecido: fala e mostra "Não entendi o valor, pode repetir?".
 
 **Interpretador** (função pura `interpretarFala(texto: string, hoje: string)`):
 - Valor: dígitos com milhar/decimal BR ("1.500,50"), "R$ 200", "200 reais", "5 mil", "5 mil e 500", "200 reais e 50 centavos", números por extenso até milhares ("duzentos", "cinco mil e quinhentos").
 - Tipo: entrada se contém "recebi", "recebimento", "me pagou", "entrou", "recebido"; senão saída.
-- Data: "ontem", "anteontem", "dia N" (mês atual; se N > hoje, mês anterior); padrão hoje.
+- Data: "ontem", "anteontem", "dia N" (mês atual; se N > hoje, mês anterior); padrão hoje. Data completa, com ou sem "dia", "data", "no dia" ou "em": `29 de setembro de 2026`, `29 de setembro` (ano omitido: ano corrente e, se ficar no futuro, o anterior), `29 de 9 de 2026`, `29 do 9 de 2026`, `29/09/2026`, `29/09`, `29-09-2026`, `29.09.2026` e por extenso (`vinte e nove de setembro de dois mil e vinte e seis`; o mês pode ser número por extenso no padrão `<dia> de <número> de <ano>`). A data falada nunca vira o valor ("2026", "29" e "9" não são dinheiro; `dia 29 de setembro de dois mil reais` é data + R$ 2.000). Validação por aritmética de string (dia, mês, bissexto; ano 2000-2100); data inválida é ignorada (fica hoje, palavras na descrição). Data explícita no futuro é aceita, e a confirmação mostra "Data no futuro" (data > hoje) ou o aviso mais forte "Confira o ano" (mais de 366 dias à frente).
 - Descrição: texto restante sem o valor, sem palavras de comando ("paguei", "pagamento de", "recebi") e sem a expressão de data; primeira letra maiúscula; vazia → "Lançamento por voz".
 - Categoria: `aplicarRegras` (Task 6) sobre a descrição; conta: última usada (cookie) ou primeira conta do workspace.
 
@@ -134,11 +139,13 @@ Origem: o pai do usuário precisa enviar a alguém (ex.: o Sr. Jeová) a lista d
 
 **Favorecido:** `lancamentos.favorecido` (text, nullable; nome como falado/digitado, ex.: "Jeová") e `lancamentos.favorecido_chave` (text, nullable; chave normalizada: NFD sem acentos, minúsculas, sem tratamentos "senhor/sr/seu/dona/sra/dr/dra", espaços colapsados — calculada na aplicação ao gravar). Índice `(workspace_id, favorecido_chave, data)`. Preenchido pela voz ("para o senhor Jeová" → "Jeová"; em entradas, "recebi ... do João" → "João"), editável no formulário de lançamento, com sugestão dos nomes já usados (distintos por chave). Busca/filtro por chave, então "Jeová", "jeova" e "senhor Jeová" coincidem. Filtro também na tela de lançamentos.
 
-**Tela `/w/[id]/exportar`:** favorecido (autocomplete), período (de/até + atalhos: este mês, mês passado, últimos 30 dias), tipo (saídas | entradas | todas; padrão saídas), opções: "mostrar total" (padrão **desligado**) e "anotações" (padrão: texto da descrição do lançamento; alternativa: deixar em branco para escrever à mão após imprimir). Prévia na tela; botões grandes **Compartilhar** (Web Share API com arquivo, abre o WhatsApp no celular; sem suporte → baixar), **Baixar PNG** e **Baixar PDF**. Botão de exportar também na tela de lançamentos (respeitando os filtros).
+**Tela `/w/[id]/exportar`:** favorecido (autocomplete), período (de/até + atalhos: este mês, mês passado, últimos 30 dias), tipo (saídas | entradas | todas; padrão saídas), opções: "mostrar total" (padrão **desligado**) e "Mostrar a descrição em Anotações" (padrão **desligado**: a coluna Anotações sai em branco, como na referência, para escrever à mão após imprimir). Período com o atalho "Todo o período" (todas as transações do favorecido). Prévia na tela; **PNG é o formato principal**: botão primário grande **Compartilhar** (Web Share API com arquivo, abre o WhatsApp no celular; sem suporte → baixar), depois **Baixar imagem (PNG)**; o PDF é ação secundária discreta ("Baixar em PDF") e não faz parte do fluxo de voz. Botão de exportar também na tela de lançamentos (respeitando os filtros).
 
-**Relatório (função pura):** `montarRelatorio(lancamentos, opcoes)` → `{ titulo: 'Transações efetuadas | <favorecido>', periodo: 'dd/mm/aaaa a dd/mm/aaaa', linhas: [{ data: 'dd/mm/aaaa', anotacao, valor: 'R$ 300,00' }], total?: string }`; ordenado por data crescente; valores em módulo para saídas filtradas (sem sinal), com sinal quando "todas". PNG renderizado no navegador por canvas (largura 1080px, fonte grande, alto contraste, até 25 linhas por imagem; acima disso gera várias imagens "parte 1/N"); PDF no navegador (biblioteca leve, ex.: `jspdf`), paginado. Sem servidor, sem custo.
+**Relatório (função pura):** `montarRelatorio(lancamentos, opcoes)` → `{ titulo: 'Transações efetuadas | <favorecido>', periodo: 'dd/mm/aaaa a dd/mm/aaaa', linhas: [{ data: 'dd/mm/aaaa', anotacao, valor: 'R$ 300,00' }], total?: string }`; ordenado por data crescente; valores em módulo para saídas filtradas (sem sinal), com sinal quando "todas". PNG renderizado no navegador por canvas no layout da imagem de referência (largura 1800px; fundo `#f4f5f7`; título "Transações efetuadas" em 72px negrito `#1f2937`, barra vertical de 8x80px e o nome na mesma linha; cartão branco de bordas arredondadas (raio 40, borda `#e5e7eb`, x 100 a 1700, a partir de y 260) com cabeçalho cinza `#6b7280` de 28px "Data" (x 170), "Anotações" (x 860), "Valor" (à direita, x 1630) e linhas de 170px: ponto azul `#2f5597` de raio 16, data em 40px, anotação opcional e valor em 40px negrito à direita, separadores finos, sem zebra; altura = 490 + 170 x linhas, ex.: 1170px para 4 linhas; fonte `Inter, system-ui, Arial, sans-serif`, pois o canvas não carrega `next/font`; alto contraste; anotação longa em até 2 linhas com reticências; até 12 linhas por imagem, acima disso várias imagens com título e cabeçalho repetidos e rodapé "Parte i/N"; o período não aparece no PNG, só no PDF); PDF no navegador (biblioteca leve, ex.: `jspdf`), paginado. Sem servidor, sem custo.
 
 **Voz:** o mesmo botão de microfone. `interpretarComando(texto, hoje)` decide: se contém verbo de exportação ("exporte", "exportar", "gerar lista", "manda a lista", "relatório") → `{ tipo: 'exportar', favorecido, de, ate, filtroTipo }`; senão → lançamento (`interpretarFala`). Períodos: "de 29 de setembro até 8 de outubro", "de 1 a 8 de outubro", "este mês", "mês passado", "últimos N dias", "semana passada"; ano omitido = ano atual, e se a data resultante for futura, ano anterior. Resposta falada: "Encontrei três transações para Jeová, de 29 de setembro a 8 de outubro." (sem total, a menos que a opção esteja ligada). Favorecido inexistente → mostra nomes parecidos (distância de edição pequena sobre a chave) e pergunta. Zero resultados → "Não encontrei transações" e mostra o período usado.
+
+**Sem período = tudo:** se a fala não cita período, exporta TODAS as transações do favorecido (`exporte transações efetuadas Roberto`, `exporta a lista do Roberto`; `exporte tudo` exporta tudo de todos). O comando carrega `todoPeriodo: true` com `de`/`ate` sentinelas (1900-01-01 a 2200-12-31); o servidor não filtra por data e o rótulo do período é a menor e a maior data das linhas ("29/09/2026 a 09/10/2026"). O favorecido é achado entre os nomes já cadastrados em QUALQUER posição da frase (maior nome primeiro, palavras inteiras); a preposição (`para/pra/pro/do/da/de`) é o fallback, e um nome desconhecido sem preposição é mantido para sugerir nomes parecidos, nunca exportando "todos" por engano. Resposta falada: "Encontrei três transações para Roberto, de 29 de setembro a 9 de outubro" (datas dos extremos reais). A pergunta "De que período?" deixa de existir.
 
 **Fora do escopo:** leitura automática de foto/extrato por IA ou OCR (exige serviço pago ou é pouco confiável); pagamentos antigos entram por voz ou formulário (a voz entende "dia 29 de setembro").
 
