@@ -88,8 +88,8 @@ describe('favorecido no lancamentoSchema', () => {
   })
 
   it('mantém a grafia digitada (aparada) e calcula a chave', () => {
-    const r = lancamentoSchema.safeParse({ ...base, favorecido: '  Senhor   Jeová ' })
-    expect(r.success && [r.data.favorecido, r.data.favorecidoChave]).toEqual(['Senhor Jeová', 'jeova'])
+    const r = lancamentoSchema.safeParse({ ...base, favorecido: '  Senhor   Jerônimo ' })
+    expect(r.success && [r.data.favorecido, r.data.favorecidoChave]).toEqual(['Senhor Jerônimo', 'jeronimo'])
   })
 
   it('aceita 80 caracteres e rejeita 81', () => {
@@ -112,7 +112,7 @@ describe('filtros', () => {
   })
 
   it('lerFiltros lê favorecidoChave aparado e limitado a 80', () => {
-    expect(lerFiltros({ favorecidoChave: '  senhor Jeová ' }).favorecidoChave).toBe('senhor Jeová')
+    expect(lerFiltros({ favorecidoChave: '  senhor Jerônimo ' }).favorecidoChave).toBe('senhor Jerônimo')
     expect(lerFiltros({ favorecidoChave: 'a'.repeat(200) }).favorecidoChave).toHaveLength(80)
     expect(lerFiltros({ favorecidoChave: '  ' })).toEqual({ pagina: 1 })
   })

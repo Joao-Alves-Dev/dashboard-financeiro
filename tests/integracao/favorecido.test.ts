@@ -27,7 +27,7 @@ describe('favorecido nos lançamentos', () => {
     lancamentoSchema.parse({
       valor: '100,00',
       tipo: 'saida',
-      data: '2026-09-29',
+      data: '2026-03-12',
       descricao: 'Pagamento',
       contaId: contaA,
       categoriaId: '',
@@ -65,11 +65,11 @@ describe('favorecido nos lançamentos', () => {
   })
 
   it('app_user lê e grava as colunas novas; o schema devolve favorecido e chave', async () => {
-    const l = await criarLancamentoDoUsuario(A, wsA, lanc({ descricao: 'Primeiro', favorecido: ' Senhor  Jeová ' }))
-    expect(l.favorecido).toBe('Senhor Jeová')
-    expect(l.favorecidoChave).toBe('jeova')
+    const l = await criarLancamentoDoUsuario(A, wsA, lanc({ descricao: 'Primeiro', favorecido: ' Senhor  Jerônimo ' }))
+    expect(l.favorecido).toBe('Senhor Jerônimo')
+    expect(l.favorecidoChave).toBe('jeronimo')
     const lida = await listarLancamentosDoUsuario(A, wsA, filtros())
-    expect(lida.itens.find((i) => i.id === l.id)).toMatchObject({ favorecido: 'Senhor Jeová', favorecidoChave: 'jeova' })
+    expect(lida.itens.find((i) => i.id === l.id)).toMatchObject({ favorecido: 'Senhor Jerônimo', favorecidoChave: 'jeronimo' })
   })
 
   it('lançamento sem favorecido grava nulos', async () => {
@@ -78,12 +78,12 @@ describe('favorecido nos lançamentos', () => {
     expect(l.favorecidoChave).toBeNull()
   })
 
-  it('o filtro acha "Jeová" por "senhor jeova", "Jeova" e "jeová"; outro nome não casa', async () => {
-    await criarLancamentoDoUsuario(A, wsA, lanc({ descricao: 'Jeová pgto', favorecido: 'Jeová' }))
+  it('o filtro acha "Jerônimo" por "senhor jeronimo", "Jeronimo" e "jerônimo"; outro nome não casa', async () => {
+    await criarLancamentoDoUsuario(A, wsA, lanc({ descricao: 'Jerônimo pgto', favorecido: 'Jerônimo' }))
     await criarLancamentoDoUsuario(A, wsA, lanc({ descricao: 'Outra pessoa', favorecido: 'José' }))
-    for (const busca of ['senhor jeova', 'Jeova', 'jeová', 'jeova', '  Sr. JEOVÁ ']) {
+    for (const busca of ['senhor jeronimo', 'Jeronimo', 'jerônimo', 'jeronimo', '  Sr. JERÔNIMO ']) {
       const nomes = await nomesPorFiltro(A, wsA, { favorecidoChave: busca })
-      expect(nomes, busca).toEqual(['Jeová pgto', 'Primeiro'])
+      expect(nomes, busca).toEqual(['Jerônimo pgto', 'Primeiro'])
     }
     expect(await nomesPorFiltro(A, wsA, { favorecidoChave: 'jose' })).toEqual(['Outra pessoa'])
     // só tratamento → chave vazia → não casa com nada (e não vira "sem filtro")
@@ -91,8 +91,8 @@ describe('favorecido nos lançamentos', () => {
   })
 
   it('o filtro de texto livre também acha pelo nome do favorecido', async () => {
-    const nomes = await nomesPorFiltro(A, wsA, { texto: 'jeová' })
-    expect(nomes).toEqual(['Jeová pgto', 'Primeiro'])
+    const nomes = await nomesPorFiltro(A, wsA, { texto: 'jerônimo' })
+    expect(nomes).toEqual(['Jerônimo pgto', 'Primeiro'])
     // continua achando pela descrição
     expect(await nomesPorFiltro(A, wsA, { texto: 'outra pess' })).toEqual(['Outra pessoa'])
     // % e _ continuam literais
@@ -100,19 +100,19 @@ describe('favorecido nos lançamentos', () => {
   })
 
   it('listarFavorecidos agrupa grafias na mesma chave, usa a grafia mais recente por data e conta o total', async () => {
-    // Criados fora de ordem de data: o mais recente (08/10) é criado primeiro.
-    await criarLancamentoDoUsuario(A, wsA, lanc({ descricao: 'Ref 3', data: '2026-10-08', valor: '300,00', favorecido: 'jeová' }))
-    await criarLancamentoDoUsuario(A, wsA, lanc({ descricao: 'Ref 1', data: '2026-09-29', favorecido: 'Jeová' }))
-    await criarLancamentoDoUsuario(A, wsA, lanc({ descricao: 'Ref 2', data: '2026-10-05', valor: '300,00', favorecido: 'senhor Jeova' }))
+    // Criados fora de ordem de data: o mais recente (26/03) é criado primeiro.
+    await criarLancamentoDoUsuario(A, wsA, lanc({ descricao: 'Ref 3', data: '2026-03-26', valor: '180,00', favorecido: 'jerônimo' }))
+    await criarLancamentoDoUsuario(A, wsA, lanc({ descricao: 'Ref 1', data: '2026-03-12', valor: '120,00', favorecido: 'Jerônimo' }))
+    await criarLancamentoDoUsuario(A, wsA, lanc({ descricao: 'Ref 2', data: '2026-03-19', valor: '250,00', favorecido: 'senhor Jeronimo' }))
     const lista = await listarFavorecidosDoUsuario(A, wsA)
-    const j = lista.filter((f) => f.chave === 'jeova')
+    const j = lista.filter((f) => f.chave === 'jeronimo')
     expect(j).toHaveLength(1)
-    expect(j[0].nome).toBe('jeová')
-    // Primeiro, Jeová pgto (já existentes) + 3 de referência
+    expect(j[0].nome).toBe('jerônimo')
+    // Primeiro, Jerônimo pgto (já existentes) + 3 de referência
     expect(j[0].total).toBe(5)
     // ordenado por total desc; José (1) vem depois
-    expect(lista[0].chave).toBe('jeova')
-    expect(lista.map((f) => f.chave)).toEqual(['jeova', 'jose'])
+    expect(lista[0].chave).toBe('jeronimo')
+    expect(lista.map((f) => f.chave)).toEqual(['jeronimo', 'jose'])
   })
 
   it('empate de data usa criado_em mais recente para o nome', async () => {
@@ -123,9 +123,9 @@ describe('favorecido nos lançamentos', () => {
   })
 
   it('filtro por favorecido + período combinados', async () => {
-    const nomes = await nomesPorFiltro(A, wsA, { favorecidoChave: 'jeova', de: '2026-09-29', ate: '2026-10-05' })
-    expect(nomes).toEqual(['Jeová pgto', 'Primeiro', 'Ref 1', 'Ref 2'])
-    const so = await nomesPorFiltro(A, wsA, { favorecidoChave: 'jeova', de: '2026-10-06', ate: '2026-10-31' })
+    const nomes = await nomesPorFiltro(A, wsA, { favorecidoChave: 'jeronimo', de: '2026-03-12', ate: '2026-03-19' })
+    expect(nomes).toEqual(['Jerônimo pgto', 'Primeiro', 'Ref 1', 'Ref 2'])
+    const so = await nomesPorFiltro(A, wsA, { favorecidoChave: 'jeronimo', de: '2026-03-20', ate: '2026-03-31' })
     expect(so).toEqual(['Ref 3'])
   })
 
@@ -186,19 +186,19 @@ describe('favorecido nos lançamentos', () => {
       B,
       wsB,
       lancamentoSchema.parse({
-        valor: '10,00', tipo: 'saida', data: '2026-09-29', descricao: 'Do B', contaId: contaB, categoriaId: '', favorecido: 'Jeová',
+        valor: '10,00', tipo: 'saida', data: '2026-03-12', descricao: 'Do B', contaId: contaB, categoriaId: '', favorecido: 'Jerônimo',
       }),
     )
     // B enxerga só o próprio favorecido (total 1), nunca os de A
-    expect(await listarFavorecidosDoUsuario(B, wsB)).toEqual([{ chave: 'jeova', nome: 'Jeová', total: 1 }])
+    expect(await listarFavorecidosDoUsuario(B, wsB)).toEqual([{ chave: 'jeronimo', nome: 'Jerônimo', total: 1 }])
     // B pedindo o workspace de A: RLS não devolve nada
     expect(await listarFavorecidosDoUsuario(B, wsA)).toEqual([])
-    const l = await listarLancamentosDoUsuario(B, wsA, filtros({ favorecidoChave: 'jeova' }))
+    const l = await listarLancamentosDoUsuario(B, wsA, filtros({ favorecidoChave: 'jeronimo' }))
     expect(l).toEqual({ itens: [], total: 0 })
     // e A não vê o lançamento de B
-    const doA = await listarLancamentosDoUsuario(A, wsA, filtros({ favorecidoChave: 'jeova' }))
+    const doA = await listarLancamentosDoUsuario(A, wsA, filtros({ favorecidoChave: 'jeronimo' }))
     expect(doA.itens.some((i) => i.descricao === 'Do B')).toBe(false)
-    expect((await listarFavorecidosDoUsuario(A, wsA)).find((f) => f.chave === 'jeova')?.total).toBe(5)
+    expect((await listarFavorecidosDoUsuario(A, wsA)).find((f) => f.chave === 'jeronimo')?.total).toBe(5)
   })
 
   it('lançamentos importados continuam funcionando, sem favorecido', async () => {

@@ -31,7 +31,7 @@ export async function listarLancamentosDoUsuario(
     condicoes.push(or(ilike(lancamentos.descricao, padrao), ilike(lancamentos.favorecido, padrao)))
   }
   if (f.favorecidoChave !== undefined) {
-    // Aceita a chave ou o nome como digitado ("senhor Jeová" → "jeova"). Chave vazia (ex.: só
+    // Aceita a chave ou o nome como digitado ("senhor Jerônimo" → "jeronimo"). Chave vazia (ex.: só
     // "senhor") não casa com nada em vez de ser ignorada.
     const chave = normalizarFavorecido(f.favorecidoChave)
     condicoes.push(chave ? eq(lancamentos.favorecidoChave, chave) : sql`false`)

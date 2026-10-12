@@ -92,7 +92,7 @@ describe('conta padrão invisível', () => {
 
   it('voz / lançamento rápido em workspace SEM conta: cria a Carteira e grava (data completa falada)', async () => {
     const ws = await novoWorkspace(A, 'Fluxo voz', true)
-    const fala = interpretarFala('paguei 100 reais para o roberto em 29 de setembro de 2026', '2026-10-08')
+    const fala = interpretarFala('paguei 120 reais para o roberto em 29 de setembro de 2026', '2026-10-08')
     if (!fala.ok) throw new Error('fala não entendida')
     // Mesmo caminho da action criarLancamento: sem conta informada, usa a conta padrão.
     const contaId = await garantirContaPadraoDoUsuario(A, ws)
@@ -107,7 +107,7 @@ describe('conta padrão invisível', () => {
       favorecido: fala.favorecido ?? '',
     })
     const l = await criarLancamentoDoUsuario(A, ws, entrada)
-    expect(l).toMatchObject({ valorCentavos: -10000, data: '2026-09-29', favorecido: 'Roberto', contaId })
+    expect(l).toMatchObject({ valorCentavos: -12000, data: '2026-09-29', favorecido: 'Roberto', contaId })
     const { itens } = await listarLancamentosDoUsuario(A, ws, { pagina: 1 })
     expect(itens).toHaveLength(1)
     expect(await listarContasDoUsuario(A, ws)).toHaveLength(1)

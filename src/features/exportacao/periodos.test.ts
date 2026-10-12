@@ -58,8 +58,8 @@ describe('resolverPeriodo', () => {
 
   it('sem período: null', () => {
     expect(resolverPeriodo('', HOJE)).toBeNull()
-    expect(resolverPeriodo('exporte para Jeová', HOJE)).toBeNull()
-    expect(resolverPeriodo('200 reais para o senhor Jeová', HOJE)).toBeNull()
+    expect(resolverPeriodo('exporte para Jerônimo', HOJE)).toBeNull()
+    expect(resolverPeriodo('200 reais para o senhor Jerônimo', HOJE)).toBeNull()
   })
 
   it('data inexistente é ignorada', () => {

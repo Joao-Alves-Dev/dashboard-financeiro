@@ -6,7 +6,7 @@ export const FAVORECIDO_MAX = 80
 
 /**
  * Chave de busca/agrupamento: sem acentos, minúsculas, sem `.` e `,`, espaços colapsados e sem
- * tratamentos nos primeiros tokens ("Senhor Jeová", "Sr. Jeová" e "jeova" → "jeova").
+ * tratamentos nos primeiros tokens ("Senhor Jerônimo", "Sr. Jerônimo" e "jeronimo" → "jeronimo").
  * Tratamentos no meio/fim do nome são preservados ("Zé do Sr. Silva").
  */
 export function normalizarFavorecido(nome: string): string {

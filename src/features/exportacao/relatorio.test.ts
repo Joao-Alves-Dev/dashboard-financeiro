@@ -5,16 +5,16 @@ import { montarRelatorio, type OpcoesRelatorio } from './relatorio'
 const NB = ' '
 const R = (v: string) => `R$${NB}${v}`
 
-const jeova = [
-  { data: '2026-10-08', descricao: 'Viagem', valorCentavos: -30000 },
-  { data: '2026-09-29', descricao: 'Viagem', valorCentavos: -10000 },
-  { data: '2026-10-05', descricao: 'Combustível', valorCentavos: -30000 },
+const jeronimo = [
+  { data: '2026-03-26', descricao: 'Viagem', valorCentavos: -18000 },
+  { data: '2026-03-12', descricao: 'Viagem', valorCentavos: -12000 },
+  { data: '2026-03-19', descricao: 'Combustível', valorCentavos: -25000 },
 ]
 
 const base: OpcoesRelatorio = {
-  favorecido: 'Jeová',
-  de: '2026-09-29',
-  ate: '2026-10-08',
+  favorecido: 'Jerônimo',
+  de: '2026-03-12',
+  ate: '2026-03-26',
   tipo: 'saidas',
   mostrarTotal: false,
   anotacoes: 'descricao',
@@ -22,44 +22,44 @@ const base: OpcoesRelatorio = {
 
 describe('montarRelatorio', () => {
   it('monta a lista de referência: título, período, linhas em ordem de data, sem soma', () => {
-    const r = montarRelatorio(jeova, base)
-    expect(r.titulo).toBe('Transações efetuadas | Jeová')
-    expect(r.periodo).toBe('29/09/2026 a 08/10/2026')
+    const r = montarRelatorio(jeronimo, base)
+    expect(r.titulo).toBe('Transações efetuadas | Jerônimo')
+    expect(r.periodo).toBe('12/03/2026 a 26/03/2026')
     expect(r.linhas).toEqual([
-      { data: '29/09/2026', anotacao: 'Viagem', valor: R('100,00') },
-      { data: '05/10/2026', anotacao: 'Combustível', valor: R('300,00') },
-      { data: '08/10/2026', anotacao: 'Viagem', valor: R('300,00') },
+      { data: '12/03/2026', anotacao: 'Viagem', valor: R('120,00') },
+      { data: '19/03/2026', anotacao: 'Combustível', valor: R('250,00') },
+      { data: '26/03/2026', anotacao: 'Viagem', valor: R('180,00') },
     ])
     expect(r.total).toBeUndefined()
     expect('total' in r).toBe(false)
   })
 
   it('mostrarTotal soma os valores exibidos', () => {
-    expect(montarRelatorio(jeova, { ...base, mostrarTotal: true }).total).toBe(R('700,00'))
+    expect(montarRelatorio(jeronimo, { ...base, mostrarTotal: true }).total).toBe(R('550,00'))
   })
 
   it("anotacoes 'branco' deixa a anotação vazia", () => {
-    const r = montarRelatorio(jeova, { ...base, anotacoes: 'branco' })
+    const r = montarRelatorio(jeronimo, { ...base, anotacoes: 'branco' })
     expect(r.linhas.every((l) => l.anotacao === '')).toBe(true)
   })
 
   it("tipo 'todas' mantém o sinal e o total é líquido", () => {
-    const l = [...jeova, { data: '2026-10-06', descricao: 'Estorno', valorCentavos: 5000 }]
+    const l = [...jeronimo, { data: '2026-03-20', descricao: 'Estorno', valorCentavos: 5000 }]
     const r = montarRelatorio(l, { ...base, tipo: 'todas', mostrarTotal: true })
     expect(r.linhas.map((x) => x.valor)).toEqual([
-      `-R$${NB}100,00`,
-      `-R$${NB}300,00`,
+      `-R$${NB}120,00`,
+      `-R$${NB}250,00`,
       R('50,00'),
-      `-R$${NB}300,00`,
+      `-R$${NB}180,00`,
     ])
-    expect(r.total).toBe(`-R$${NB}650,00`)
+    expect(r.total).toBe(`-R$${NB}500,00`)
   })
 
   it('saídas ignora entradas; entradas ignora saídas (sem sinal)', () => {
-    const l = [...jeova, { data: '2026-10-06', descricao: 'Estorno', valorCentavos: 5000 }]
+    const l = [...jeronimo, { data: '2026-03-20', descricao: 'Estorno', valorCentavos: 5000 }]
     expect(montarRelatorio(l, base).linhas).toHaveLength(3)
     const e = montarRelatorio(l, { ...base, tipo: 'entradas', mostrarTotal: true })
-    expect(e.linhas).toEqual([{ data: '06/10/2026', anotacao: 'Estorno', valor: R('50,00') }])
+    expect(e.linhas).toEqual([{ data: '20/03/2026', anotacao: 'Estorno', valor: R('50,00') }])
     expect(e.total).toBe(R('50,00'))
   })
 
@@ -75,7 +75,7 @@ describe('montarRelatorio', () => {
   })
 
   it("favorecido vazio vira 'Todos'", () => {
-    expect(montarRelatorio(jeova, { ...base, favorecido: '  ' }).titulo).toBe('Transações efetuadas | Todos')
+    expect(montarRelatorio(jeronimo, { ...base, favorecido: '  ' }).titulo).toBe('Transações efetuadas | Todos')
   })
 
   it('sem linhas: lista vazia e total zero quando pedido', () => {
@@ -85,30 +85,30 @@ describe('montarRelatorio', () => {
   })
 
   it('anotação com quebras de linha vira uma linha só', () => {
-    const r = montarRelatorio([{ data: '2026-10-01', descricao: 'a\n  b', valorCentavos: -100 }], base)
+    const r = montarRelatorio([{ data: '2026-03-15', descricao: 'a\n  b', valorCentavos: -100 }], base)
     expect(r.linhas[0].anotacao).toBe('a b')
   })
 })
 
 describe('montarRelatorio: todo o período (Task 15d)', () => {
   const roberto = [
-    { data: '2026-10-09', descricao: 'Frete', valorCentavos: -10000 },
-    { data: '2026-09-29', descricao: 'Frete', valorCentavos: -10000 },
-    { data: '2026-10-05', descricao: 'Peças', valorCentavos: -30000 },
-    { data: '2026-10-08', descricao: 'Peças', valorCentavos: -30000 },
+    { data: '2026-03-27', descricao: 'Frete', valorCentavos: -10000 },
+    { data: '2026-03-12', descricao: 'Frete', valorCentavos: -12000 },
+    { data: '2026-03-19', descricao: 'Peças', valorCentavos: -25000 },
+    { data: '2026-03-26', descricao: 'Peças', valorCentavos: -18000 },
   ]
   const tudo: OpcoesRelatorio = { ...base, favorecido: 'Roberto', ...PERIODO_TUDO, todoPeriodo: true }
 
   it('inclui todas as datas e rotula o período pelas datas das linhas (menor e maior)', () => {
     const r = montarRelatorio(roberto, tudo)
-    expect(r.linhas.map((l) => l.data)).toEqual(['29/09/2026', '05/10/2026', '08/10/2026', '09/10/2026'])
-    expect(r.periodo).toBe('29/09/2026 a 09/10/2026')
-    expect(r.de).toBe('2026-09-29')
-    expect(r.ate).toBe('2026-10-09')
+    expect(r.linhas.map((l) => l.data)).toEqual(['12/03/2026', '19/03/2026', '26/03/2026', '27/03/2026'])
+    expect(r.periodo).toBe('12/03/2026 a 27/03/2026')
+    expect(r.de).toBe('2026-03-12')
+    expect(r.ate).toBe('2026-03-27')
   })
 
   it('ignora de/ate quando todoPeriodo (mesmo com datas que excluiriam as linhas)', () => {
-    const r = montarRelatorio(roberto, { ...tudo, de: '2026-10-01', ate: '2026-10-02' })
+    const r = montarRelatorio(roberto, { ...tudo, de: '2026-04-01', ate: '2026-04-02' })
     expect(r.linhas).toHaveLength(4)
   })
 
@@ -121,15 +121,15 @@ describe('montarRelatorio: todo o período (Task 15d)', () => {
 
   it('só os extremos das linhas que passam no filtro de tipo', () => {
     const l = [...roberto, { data: '2027-01-02', descricao: 'Estorno', valorCentavos: 5000 }]
-    expect(montarRelatorio(l, tudo).periodo).toBe('29/09/2026 a 09/10/2026')
-    expect(montarRelatorio(l, { ...tudo, tipo: 'todas' }).periodo).toBe('29/09/2026 a 02/01/2027')
+    expect(montarRelatorio(l, tudo).periodo).toBe('12/03/2026 a 27/03/2026')
+    expect(montarRelatorio(l, { ...tudo, tipo: 'todas' }).periodo).toBe('12/03/2026 a 02/01/2027')
   })
 
   it('período explícito também informa de/ate (extremos do intervalo pedido)', () => {
-    const r = montarRelatorio(roberto, { ...base, favorecido: 'Roberto', de: '2026-09-01', ate: '2026-10-31' })
-    expect(r.periodo).toBe('01/09/2026 a 31/10/2026')
-    expect(r.de).toBe('2026-09-01')
-    expect(r.ate).toBe('2026-10-31')
+    const r = montarRelatorio(roberto, { ...base, favorecido: 'Roberto', de: '2026-03-01', ate: '2026-04-30' })
+    expect(r.periodo).toBe('01/03/2026 a 30/04/2026')
+    expect(r.de).toBe('2026-03-01')
+    expect(r.ate).toBe('2026-04-30')
   })
 })
 

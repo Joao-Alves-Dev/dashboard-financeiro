@@ -12,17 +12,17 @@ import type { Relatorio } from './relatorio'
 // Medida fictícia: cada caractere ocupa metade do tamanho da fonte.
 const medir: Medir = (texto, tamanho) => texto.length * tamanho * 0.5
 
-const DATAS = ['29/09/2026', '05/10/2026', '08/10/2026', '09/10/2026']
+const DATAS = ['12/03/2026', '19/03/2026', '26/03/2026', '27/03/2026']
 const linhas = (n: number, anotacao = '') =>
   Array.from({ length: n }, (_, i) => ({
     data: DATAS[i % DATAS.length],
     anotacao,
-    valor: i % 3 === 0 ? 'R$ 100,00' : 'R$ 300,00',
+    valor: i % 3 === 0 ? 'R$ 120,00' : 'R$ 250,00',
   }))
 
 const rel = (n: number, extra: Partial<Relatorio> = {}, anotacao?: string): Relatorio => ({
-  titulo: 'Transações efetuadas | Jeová',
-  periodo: '29/09/2026 a 09/10/2026',
+  titulo: 'Transações efetuadas | Jerônimo',
+  periodo: '12/03/2026 a 27/03/2026',
   linhas: linhas(n, anotacao),
   ...extra,
 })
@@ -81,7 +81,7 @@ describe('calcularLayoutRelatorio: layout da imagem de referência (1800px)', ()
     expect(barra).toMatchObject({ y: 80, w: 8, h: 80 })
     // a barra vem depois do texto (folga de 40) e o nome depois da barra (folga de 40)
     expect(barra.x).toBe(100 + medir('Transações efetuadas', 72, true) + 40)
-    expect(nome).toMatchObject({ texto: 'Jeová', tamanho: 72, negrito: true })
+    expect(nome).toMatchObject({ texto: 'Jerônimo', tamanho: 72, negrito: true })
     expect(nome.x).toBe(barra.x + barra.w + 40)
     // mesma linha: caixas de texto iguais e centradas na barra (y 120)
     expect(nome.y).toBe(base.y)
@@ -113,7 +113,7 @@ describe('calcularLayoutRelatorio: layout da imagem de referência (1800px)', ()
       expect(valor).toMatchObject({ x: 1630, tamanho: 40, negrito: true })
       expect(valor.y + valor.h / 2).toBe(l.y + 85)
     }
-    expect(p.linhas[0].textos.map((t) => t.texto)).toEqual(['29/09/2026', 'R$ 100,00'])
+    expect(p.linhas[0].textos.map((t) => t.texto)).toEqual(['12/03/2026', 'R$ 120,00'])
   })
 
   it('separadores entre as linhas e nenhum depois da última (sem total); sem zebra', () => {
@@ -183,13 +183,13 @@ describe('calcularLayoutRelatorio: layout da imagem de referência (1800px)', ()
   })
 
   it('total opcional: linha final em negrito dentro do cartão, separada por uma linha', () => {
-    const p = layout(rel(4, { total: 'R$ 800,00' })).paginas[0]
+    const p = layout(rel(4, { total: 'R$ 740,00' })).paginas[0]
     expect(p.total).toBeDefined()
     expect(p.linhas.at(-1)!.separadorY).toBeNull()
     expect(p.total!.linhaY).toBe(1070) // fim da última linha (390 + 4 x 170)
     const [rotulo, valor] = p.total!.textos
     expect(rotulo).toMatchObject({ texto: 'Total', x: 170, negrito: true, tamanho: 40 })
-    expect(valor).toMatchObject({ texto: 'R$ 800,00', x: 1630, negrito: true, alinhar: 'dir' })
+    expect(valor).toMatchObject({ texto: 'R$ 740,00', x: 1630, negrito: true, alinhar: 'dir' })
     expect(p.cartao.y + p.cartao.h).toBe(1070 + 150)
     expect(p.altura).toBe(1070 + 150 + 100)
   })

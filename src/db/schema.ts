@@ -128,7 +128,7 @@ export const lancamentos = pgTable(
     status: text('status').notNull().default('efetivado'),
     idExterno: text('id_externo'),
     importacaoId: uuid('importacao_id'),
-    // Quem recebeu/pagou, como digitado ("Senhor Jeová"); `favorecido_chave` é a forma normalizada
+    // Quem recebeu/pagou, como digitado ("Senhor Jerônimo"); `favorecido_chave` é a forma normalizada
     // (sem acentos/tratamento) usada para agrupar e filtrar. Ambos nulos ou ambos preenchidos.
     favorecido: text('favorecido'),
     favorecidoChave: text('favorecido_chave'),

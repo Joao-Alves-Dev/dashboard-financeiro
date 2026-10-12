@@ -10,13 +10,13 @@ function ok(texto: string, hoje = HOJE) {
 }
 
 describe('interpretarFala: casos do plano', () => {
-  it('200 reais para o senhor Jeová', () => {
-    expect(interpretarFala('200 reais para o senhor Jeová', HOJE)).toEqual({
+  it('200 reais para o senhor Jerônimo', () => {
+    expect(interpretarFala('200 reais para o senhor Jerônimo', HOJE)).toEqual({
       ok: true,
       valorCentavos: -20000,
-      descricao: 'Para o senhor Jeová',
+      descricao: 'Para o senhor Jerônimo',
       data: '2026-10-15',
-      favorecido: 'Jeová',
+      favorecido: 'Jerônimo',
     })
   })
 
@@ -70,19 +70,19 @@ describe('interpretarFala: casos do plano', () => {
     expect(ok('dia 10 de dezembro paguei 50 reais').data).toBe('2025-12-10')
   })
 
-  it('dia 29 de setembro paguei 100 reais para o senhor Jeová (hoje 2026-10-08)', () => {
-    const r = ok('dia 29 de setembro paguei 100 reais para o senhor Jeová', '2026-10-08')
+  it('dia 12 de março paguei 120 reais para o senhor Jerônimo (hoje 2026-03-26)', () => {
+    const r = ok('dia 12 de março paguei 120 reais para o senhor Jerônimo', '2026-03-26')
     expect(r).toEqual({
       ok: true,
-      valorCentavos: -10000,
-      descricao: 'Para o senhor Jeová',
-      data: '2026-09-29',
-      favorecido: 'Jeová',
+      valorCentavos: -12000,
+      descricao: 'Para o senhor Jerônimo',
+      data: '2026-03-12',
+      favorecido: 'Jerônimo',
     })
   })
 
   it('sem valor e vazio', () => {
-    expect(interpretarFala('para o senhor Jeová', HOJE)).toEqual({ ok: false, motivo: 'sem_valor' })
+    expect(interpretarFala('para o senhor Jerônimo', HOJE)).toEqual({ ok: false, motivo: 'sem_valor' })
     expect(interpretarFala('   ', HOJE)).toEqual({ ok: false, motivo: 'vazio' })
     expect(interpretarFala('', HOJE)).toEqual({ ok: false, motivo: 'vazio' })
   })
@@ -90,7 +90,7 @@ describe('interpretarFala: casos do plano', () => {
 
 describe('interpretarFala: capitalização do favorecido (Chrome devolve minúsculas)', () => {
   it.each([
-    ['200 reais para o senhor jeová', 'Jeová'],
+    ['200 reais para o senhor jerônimo', 'Jerônimo'],
     ['recebi 350 reais da maria josé', 'Maria José'],
     ['paguei 50 reais para joão da silva', 'João da Silva'],
     ['paguei 50 reais para a dona maria de fátima', 'Maria de Fátima'],
@@ -231,36 +231,36 @@ describe('interpretarFala: data completa falada (Task 15d, hoje = 2026-10-08)', 
   const H = '2026-10-08'
 
   it.each([
-    'paguei 100 reais para o roberto em 29 de setembro de 2026',
-    'paguei 100 reais para o roberto no dia 29 de setembro de 2026',
-    'paguei 100 reais para o roberto dia 29 de setembro de 2026',
-    'paguei 100 reais para o roberto 29 de setembro de 2026',
-    'paguei 100 reais para o roberto em 29 de setembro',
-    'paguei 100 reais para o roberto 29 de 9 de 2026',
-    'paguei 100 reais para o roberto 29 do 9 de 2026',
-    'paguei 100 reais para o roberto em 29/09/2026',
-    'paguei 100 reais para o roberto 29/09',
-    'paguei 100 reais para o roberto 29-09-2026',
-    'paguei 100 reais para o roberto 29.09.2026',
-    'paguei 100 reais para o roberto data 29/09/2026',
-    'paguei 100 reais para o roberto em vinte e nove de setembro de dois mil e vinte e seis',
-    'paguei cem reais para o roberto em vinte e nove de nove de dois mil e vinte e seis',
-    'paguei 100 reais para o roberto dia vinte e nove de setembro',
-    'paguei 100 reais para o roberto dia 29/09/2026',
+    'paguei 120 reais para o roberto em 29 de setembro de 2026',
+    'paguei 120 reais para o roberto no dia 29 de setembro de 2026',
+    'paguei 120 reais para o roberto dia 29 de setembro de 2026',
+    'paguei 120 reais para o roberto 29 de setembro de 2026',
+    'paguei 120 reais para o roberto em 29 de setembro',
+    'paguei 120 reais para o roberto 29 de 9 de 2026',
+    'paguei 120 reais para o roberto 29 do 9 de 2026',
+    'paguei 120 reais para o roberto em 29/09/2026',
+    'paguei 120 reais para o roberto 29/09',
+    'paguei 120 reais para o roberto 29-09-2026',
+    'paguei 120 reais para o roberto 29.09.2026',
+    'paguei 120 reais para o roberto data 29/09/2026',
+    'paguei 120 reais para o roberto em vinte e nove de setembro de dois mil e vinte e seis',
+    'paguei cento e vinte reais para o roberto em vinte e nove de nove de dois mil e vinte e seis',
+    'paguei 120 reais para o roberto dia vinte e nove de setembro',
+    'paguei 120 reais para o roberto dia 29/09/2026',
   ])('%s', (fala) => {
     const r = ok(fala, H)
     expect(r.data).toBe('2026-09-29')
-    expect(r.valorCentavos).toBe(-10000)
+    expect(r.valorCentavos).toBe(-12000)
     expect(r.favorecido).toBe('Roberto')
     // As palavras da data não ficam na descrição.
     expect(r.descricao).toBe('Para o roberto')
   })
 
   it('data no começo da frase e sem marca de dinheiro', () => {
-    expect(ok('29/09/2026 paguei 100 reais', H)).toMatchObject({ data: '2026-09-29', valorCentavos: -10000 })
-    expect(ok('100 reais dia 29/09/2026', H)).toMatchObject({ data: '2026-09-29', valorCentavos: -10000 })
-    const r = ok('paguei 100 para o roberto em 29 de setembro de 2026', H)
-    expect(r).toMatchObject({ data: '2026-09-29', valorCentavos: -10000, favorecido: 'Roberto' })
+    expect(ok('29/09/2026 paguei 120 reais', H)).toMatchObject({ data: '2026-09-29', valorCentavos: -12000 })
+    expect(ok('120 reais dia 29/09/2026', H)).toMatchObject({ data: '2026-09-29', valorCentavos: -12000 })
+    const r = ok('paguei 120 para o roberto em 29 de setembro de 2026', H)
+    expect(r).toMatchObject({ data: '2026-09-29', valorCentavos: -12000, favorecido: 'Roberto' })
   })
 
   it('a data falada nunca vira o valor', () => {

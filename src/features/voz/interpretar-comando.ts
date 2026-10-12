@@ -33,7 +33,7 @@ const PALAVRAS_SAIDA = new Set([
 ])
 const PALAVRAS_TUDO = new Set(['tudo', 'extrato', 'movimentacao', 'movimentacoes', 'todas', 'todos'])
 
-// Palavras do próprio pedido: ficam fora do nome ("lista de pagamentos do Jeová" → Jeová).
+// Palavras do próprio pedido: ficam fora do nome ("lista de pagamentos do Jerônimo" → Jerônimo).
 const RUIDO = new Set([
   ...VERBOS_EXPORTAR, ...VERBOS_ENVIO, ...SUBSTANTIVOS, ...PALAVRAS_ENTRADA, ...PALAVRAS_SAIDA, ...PALAVRAS_TUDO,
   'me', 'por', 'favor', 'pode', 'poderia', 'quero', 'queria', 'preciso', 'gostaria', 'transacao', 'pagamento',
@@ -94,7 +94,7 @@ export function interpretarComando(texto: string, hoje: string, opcoes?: OpcoesI
     const candidato = lerNome(t, achado.ini, false)
     favorecido = candidato ? resolverFavorecidoConhecido(candidato, conhecidos) : achado.nome
   }
-  // 2) Preposição + nome ("para o Jeová", "do João"), para nomes ainda desconhecidos.
+  // 2) Preposição + nome ("para o Jerônimo", "do João"), para nomes ainda desconhecidos.
   for (let i = 0; i < t.length && !favorecido; i++) {
     const pulaArtigo = INTRODUTORES_NOME.get(t[i].l)
     if (t[i].rem || pulaArtigo === undefined) continue

@@ -3,8 +3,8 @@ import { paraPdf, renderizarPdf } from './render-pdf'
 import type { Relatorio } from './relatorio'
 
 const relatorio = (n: number, total?: string): Relatorio => ({
-  titulo: 'Transações efetuadas | Jeová',
-  periodo: '29/09/2026 a 08/10/2026',
+  titulo: 'Transações efetuadas | Jerônimo',
+  periodo: '12/03/2026 a 26/03/2026',
   linhas: Array.from({ length: n }, (_, i) => ({
     data: `${String((i % 28) + 1).padStart(2, '0')}/09/2026`,
     anotacao: i === 0 ? 'Viagem à Conceição – ação' : 'Combustível',
@@ -24,11 +24,11 @@ describe('renderizarPdf', () => {
     expect(s.startsWith('%PDF-')).toBe(true)
     expect(s).toContain('/WinAnsiEncoding')
     expect(s).toMatch(/MediaBox \[0 0 595\.2\d+ 841\.8\d+\]/)
-    expect(s).toContain('Transações efetuadas | Jeová')
+    expect(s).toContain('Transações efetuadas | Jerônimo')
     expect(s).toContain('Anotações')
     expect(s).toContain('Viagem à Conceição')
     expect(s).not.toContain('Transacoes')
-    expect(s).not.toContain('Jeova')
+    expect(s).not.toContain('Jeronimo')
   })
 
   it('pagina automaticamente e põe o total só no fim', async () => {
@@ -46,7 +46,7 @@ describe('renderizarPdf', () => {
 
 describe('paraPdf', () => {
   it('mantém o português e troca só o que a fonte padrão não tem', () => {
-    expect(paraPdf('Jeová – Conceição “ok” º')).toBe('Jeová – Conceição “ok” º')
+    expect(paraPdf('Jerônimo – Conceição “ok” º')).toBe('Jerônimo – Conceição “ok” º')
     expect(paraPdf('pago 😀 ok')).toBe('pago ? ok')
     expect(paraPdf('José')).toBe('José') // acento combinado vira o caractere composto
   })

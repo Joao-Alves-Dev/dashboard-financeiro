@@ -23,7 +23,7 @@ describe('exportação de lista por favorecido e período', () => {
     lancamentoSchema.parse({
       valor: '100,00',
       tipo: 'saida',
-      data: '2026-09-29',
+      data: '2026-03-12',
       descricao: 'Pagamento',
       contaId: conta,
       categoriaId: '',
@@ -48,19 +48,19 @@ describe('exportação de lista por favorecido e período', () => {
       contaA = (await criarContaDoUsuario(A, wsA, contaSchema.parse({ nome: 'Corrente', tipo: 'corrente', saldoInicial: '' }))).id
       contaB = (await criarContaDoUsuario(B, wsB, contaSchema.parse({ nome: 'Conta B', tipo: 'corrente', saldoInicial: '' }))).id
 
-      // Os três pagamentos da conversa de referência (inseridos fora de ordem de propósito).
-      await criarA({ valor: '300,00', data: '2026-10-08', descricao: 'Viagem', favorecido: 'Jeová' })
-      await criarA({ valor: '100,00', data: '2026-09-29', descricao: 'Viagem', favorecido: 'Senhor Jeová' })
-      await criarA({ valor: '300,00', data: '2026-10-05', descricao: 'Viagem', favorecido: 'Jeova' })
+      // Os três pagamentos fictícios de referência (inseridos fora de ordem de propósito).
+      await criarA({ valor: '180,00', data: '2026-03-26', descricao: 'Viagem', favorecido: 'Jerônimo' })
+      await criarA({ valor: '120,00', data: '2026-03-12', descricao: 'Viagem', favorecido: 'Senhor Jerônimo' })
+      await criarA({ valor: '250,00', data: '2026-03-19', descricao: 'Viagem', favorecido: 'Jeronimo' })
       // Ruído: outro favorecido, outro período, entrada, pendente e sem favorecido.
-      await criarA({ valor: '50,00', data: '2026-10-05', descricao: 'Padaria', favorecido: 'Maria' })
-      await criarA({ valor: '10,00', data: '2025-12-31', descricao: 'Fim do ano', favorecido: 'Jeová' })
-      await criarA({ valor: '20,00', data: '2026-01-01', descricao: 'Começo do ano', favorecido: 'Jeová' })
-      await criarA({ valor: '70,00', data: '2026-10-06', descricao: 'Devolução', tipo: 'entrada', favorecido: 'Jeová' })
-      await criarA({ valor: '999,00', data: '2026-10-07', descricao: 'Ainda não pago', status: 'pendente', favorecido: 'Jeová' })
-      await criarA({ valor: '15,00', data: '2026-10-07', descricao: 'Sem favorecido' })
+      await criarA({ valor: '50,00', data: '2026-03-19', descricao: 'Padaria', favorecido: 'Maria' })
+      await criarA({ valor: '10,00', data: '2025-12-31', descricao: 'Fim do ano', favorecido: 'Jerônimo' })
+      await criarA({ valor: '20,00', data: '2026-01-01', descricao: 'Começo do ano', favorecido: 'Jerônimo' })
+      await criarA({ valor: '70,00', data: '2026-03-20', descricao: 'Devolução', tipo: 'entrada', favorecido: 'Jerônimo' })
+      await criarA({ valor: '999,00', data: '2026-03-21', descricao: 'Ainda não pago', status: 'pendente', favorecido: 'Jerônimo' })
+      await criarA({ valor: '15,00', data: '2026-03-21', descricao: 'Sem favorecido' })
       // Dados do usuário B com o mesmo favorecido.
-      await criarLancamentoDoUsuario(B, wsB, lanc(contaB, { valor: '777,00', descricao: 'Do B', favorecido: 'Jeová' }))
+      await criarLancamentoDoUsuario(B, wsB, lanc(contaB, { valor: '777,00', descricao: 'Do B', favorecido: 'Jerônimo' }))
     } catch (e) {
       await apagarUsuariosTeste(ids)
       throw e
@@ -71,53 +71,53 @@ describe('exportação de lista por favorecido e período', () => {
     await apagarUsuariosTeste(ids)
   })
 
-  it('favorecido por nome, chave ou variações ("senhor jeova", "Jeova", "JEOVÁ") dá a mesma lista', async () => {
-    const base = await exportar({ favorecidoChave: 'jeova', de: '2026-09-29', ate: '2026-10-08' })
+  it('favorecido por nome, chave ou variações ("senhor jeronimo", "Jeronimo", "JERÔNIMO") dá a mesma lista', async () => {
+    const base = await exportar({ favorecidoChave: 'jeronimo', de: '2026-03-12', ate: '2026-03-26' })
     expect(base.itens.map((i) => i.descricao)).toEqual(['Viagem', 'Viagem', 'Viagem'])
-    for (const nome of ['senhor jeova', 'Jeova', 'JEOVÁ', 'Sr. Jeová', '  seu   Jeová ']) {
-      const r = await exportar({ favorecidoChave: nome, de: '2026-09-29', ate: '2026-10-08' })
+    for (const nome of ['senhor jeronimo', 'Jeronimo', 'JERÔNIMO', 'Sr. Jerônimo', '  seu   Jerônimo ']) {
+      const r = await exportar({ favorecidoChave: nome, de: '2026-03-12', ate: '2026-03-26' })
       expect(r.itens).toEqual(base.itens)
     }
   })
 
   it('ordena por data crescente e devolve a grafia mais recente do favorecido', async () => {
-    const r = await exportar({ favorecidoChave: 'senhor jeova', de: '2026-09-29', ate: '2026-10-08' })
-    expect(r.itens.map((i) => i.data)).toEqual(['2026-09-29', '2026-10-05', '2026-10-08'])
-    expect(r.nome).toBe('Jeová') // grafia do lançamento mais recente (08/10), não a de "Senhor Jeová" ou "Jeova"
+    const r = await exportar({ favorecidoChave: 'senhor jeronimo', de: '2026-03-12', ate: '2026-03-26' })
+    expect(r.itens.map((i) => i.data)).toEqual(['2026-03-12', '2026-03-19', '2026-03-26'])
+    expect(r.nome).toBe('Jerônimo') // grafia do lançamento mais recente (26/03), não a de "Senhor Jerônimo" ou "Jeronimo"
     expect(r.existe).toBe(true)
   })
 
   it('período inclusivo nas duas pontas e na virada 31/12 - 01/01', async () => {
-    const ponta = await exportar({ favorecidoChave: 'jeova', de: '2026-09-29', ate: '2026-10-05' })
-    expect(ponta.itens.map((i) => i.data)).toEqual(['2026-09-29', '2026-10-05'])
-    const fim = await exportar({ favorecidoChave: 'jeova', de: '2025-12-31', ate: '2025-12-31' })
+    const ponta = await exportar({ favorecidoChave: 'jeronimo', de: '2026-03-12', ate: '2026-03-19' })
+    expect(ponta.itens.map((i) => i.data)).toEqual(['2026-03-12', '2026-03-19'])
+    const fim = await exportar({ favorecidoChave: 'jeronimo', de: '2025-12-31', ate: '2025-12-31' })
     expect(fim.itens.map((i) => i.descricao)).toEqual(['Fim do ano'])
-    const inicio = await exportar({ favorecidoChave: 'jeova', de: '2026-01-01', ate: '2026-01-01' })
+    const inicio = await exportar({ favorecidoChave: 'jeronimo', de: '2026-01-01', ate: '2026-01-01' })
     expect(inicio.itens.map((i) => i.descricao)).toEqual(['Começo do ano'])
-    const virada = await exportar({ favorecidoChave: 'jeova', de: '2025-12-31', ate: '2026-01-01' })
+    const virada = await exportar({ favorecidoChave: 'jeronimo', de: '2025-12-31', ate: '2026-01-01' })
     expect(virada.itens.map((i) => i.descricao)).toEqual(['Fim do ano', 'Começo do ano'])
   })
 
   it("favorecido vazio = todos (inclusive sem favorecido); só efetivados; 'senhor' sozinho não vira todos", async () => {
-    const todos = await exportar({ favorecidoChave: '', de: '2026-10-01', ate: '2026-10-31' })
+    const todos = await exportar({ favorecidoChave: '', de: '2026-03-15', ate: '2026-03-31' })
     expect(todos.itens.map((i) => i.descricao).sort()).toEqual(['Padaria', 'Sem favorecido', 'Viagem', 'Viagem'].sort())
     expect(todos.nome).toBeNull()
-    const semFiltro = await exportar({ de: '2026-10-01', ate: '2026-10-31' })
+    const semFiltro = await exportar({ de: '2026-03-15', ate: '2026-03-31' })
     expect(semFiltro.itens).toHaveLength(4)
     const soTratamento = await exportar({ favorecidoChave: 'senhor' })
     expect(soTratamento.itens).toEqual([])
   })
 
   it('pendentes ficam de fora', async () => {
-    const r = await exportar({ favorecidoChave: 'jeova', tipo: 'todas', de: '2026-10-07', ate: '2026-10-07' })
+    const r = await exportar({ favorecidoChave: 'jeronimo', tipo: 'todas', de: '2026-03-21', ate: '2026-03-21' })
     expect(r.itens).toEqual([])
   })
 
   it('tipo: saídas, entradas ou todas', async () => {
-    const f = { favorecidoChave: 'jeova', de: '2026-10-01', ate: '2026-10-31' }
-    expect((await exportar({ ...f, tipo: 'saidas' })).itens.map((i) => i.valorCentavos)).toEqual([-30000, -30000])
+    const f = { favorecidoChave: 'jeronimo', de: '2026-03-15', ate: '2026-03-31' }
+    expect((await exportar({ ...f, tipo: 'saidas' })).itens.map((i) => i.valorCentavos)).toEqual([-25000, -18000])
     expect((await exportar({ ...f, tipo: 'entradas' })).itens.map((i) => i.valorCentavos)).toEqual([7000])
-    expect((await exportar({ ...f, tipo: 'todas' })).itens.map((i) => i.valorCentavos)).toEqual([-30000, 7000, -30000])
+    expect((await exportar({ ...f, tipo: 'todas' })).itens.map((i) => i.valorCentavos)).toEqual([-25000, 7000, -18000])
   })
 
   it('favorecido inexistente: lista vazia e existe=false', async () => {
@@ -128,39 +128,39 @@ describe('exportação de lista por favorecido e período', () => {
   })
 
   it('teto de linhas: erro amigável acima do teto, ok exatamente no teto', async () => {
-    const f = { favorecidoChave: 'jeova', de: '2026-09-29', ate: '2026-10-08' }
+    const f = { favorecidoChave: 'jeronimo', de: '2026-03-12', ate: '2026-03-26' }
     expect((await exportar(f, 3)).itens).toHaveLength(3)
     await expect(exportar(f, 2)).rejects.toMatchObject({ chave: 'exportacao.muitos', params: { max: 2 } })
     await expect(exportar(f, 2)).rejects.toBeInstanceOf(ErroDominio)
   })
 
   it('isolamento: B não exporta nada de A, e A não vê o de B', async () => {
-    const deB = await exportar({ favorecidoChave: 'jeova' }, undefined, B, wsB)
+    const deB = await exportar({ favorecidoChave: 'jeronimo' }, undefined, B, wsB)
     expect(deB.itens.map((i) => i.valorCentavos)).toEqual([-77700])
-    const cruzado = await exportar({ favorecidoChave: 'jeova' }, undefined, B, wsA)
+    const cruzado = await exportar({ favorecidoChave: 'jeronimo' }, undefined, B, wsA)
     expect(cruzado.itens).toEqual([])
     expect(cruzado.existe).toBe(false)
-    const outroLado = await exportar({ favorecidoChave: 'jeova' }, undefined, A, wsB)
+    const outroLado = await exportar({ favorecidoChave: 'jeronimo' }, undefined, A, wsB)
     expect(outroLado.itens).toEqual([])
   })
 
-  it('os 3 pagamentos da conversa de referência geram a lista esperada', async () => {
-    const r = await exportar({ favorecidoChave: 'senhor Jeová', de: '2026-09-29', ate: '2026-10-08' })
+  it('os 3 pagamentos fictícios de referência geram a lista esperada', async () => {
+    const r = await exportar({ favorecidoChave: 'senhor Jerônimo', de: '2026-03-12', ate: '2026-03-26' })
     const rel = montarRelatorio(r.itens, {
-      favorecido: r.nome ?? 'Jeová',
-      de: '2026-09-29',
-      ate: '2026-10-08',
+      favorecido: r.nome ?? 'Jerônimo',
+      de: '2026-03-12',
+      ate: '2026-03-26',
       tipo: 'saidas',
       mostrarTotal: false,
       anotacoes: 'descricao',
     })
     const NB = ' '
-    expect(rel.titulo).toBe('Transações efetuadas | Jeová')
-    expect(rel.periodo).toBe('29/09/2026 a 08/10/2026')
+    expect(rel.titulo).toBe('Transações efetuadas | Jerônimo')
+    expect(rel.periodo).toBe('12/03/2026 a 26/03/2026')
     expect(rel.linhas).toEqual([
-      { data: '29/09/2026', anotacao: 'Viagem', valor: `R$${NB}100,00` },
-      { data: '05/10/2026', anotacao: 'Viagem', valor: `R$${NB}300,00` },
-      { data: '08/10/2026', anotacao: 'Viagem', valor: `R$${NB}300,00` },
+      { data: '12/03/2026', anotacao: 'Viagem', valor: `R$${NB}120,00` },
+      { data: '19/03/2026', anotacao: 'Viagem', valor: `R$${NB}250,00` },
+      { data: '26/03/2026', anotacao: 'Viagem', valor: `R$${NB}180,00` },
     ])
     expect(rel.total).toBeUndefined()
   })

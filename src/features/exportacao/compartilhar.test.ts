@@ -3,7 +3,7 @@ import { compartilharOuBaixar, nomeArquivoExportacao, slugArquivo } from './comp
 
 describe('nomes de arquivo', () => {
   it('slug sem acento, minúsculo, só [a-z0-9-]', () => {
-    expect(slugArquivo('Jeová')).toBe('jeova')
+    expect(slugArquivo('Jerônimo')).toBe('jeronimo')
     expect(slugArquivo('  Maria José da Silva! ')).toBe('maria-jose-da-silva')
     expect(slugArquivo('')).toBe('todos')
     expect(slugArquivo('///')).toBe('todos')
@@ -11,8 +11,8 @@ describe('nomes de arquivo', () => {
   })
 
   it('nome do arquivo com período e extensão', () => {
-    expect(nomeArquivoExportacao('Jeová', '2026-09-29', '2026-10-08', 'png')).toBe(
-      'transacoes-jeova-2026-09-29-a-2026-10-08.png',
+    expect(nomeArquivoExportacao('Jerônimo', '2026-03-12', '2026-03-26', 'png')).toBe(
+      'transacoes-jeronimo-2026-03-12-a-2026-03-26.png',
     )
     expect(nomeArquivoExportacao('Todos', '2026-09-01', '2026-09-30', 'pdf')).toBe(
       'transacoes-todos-2026-09-01-a-2026-09-30.pdf',
@@ -20,11 +20,11 @@ describe('nomes de arquivo', () => {
   })
 
   it('várias partes ganham sufixo; uma só não', () => {
-    expect(nomeArquivoExportacao('Jeová', '2026-09-29', '2026-10-08', 'png', { numero: 2, total: 3 })).toBe(
-      'transacoes-jeova-2026-09-29-a-2026-10-08-parte-2-de-3.png',
+    expect(nomeArquivoExportacao('Jerônimo', '2026-03-12', '2026-03-26', 'png', { numero: 2, total: 3 })).toBe(
+      'transacoes-jeronimo-2026-03-12-a-2026-03-26-parte-2-de-3.png',
     )
-    expect(nomeArquivoExportacao('Jeová', '2026-09-29', '2026-10-08', 'png', { numero: 1, total: 1 })).toBe(
-      'transacoes-jeova-2026-09-29-a-2026-10-08.png',
+    expect(nomeArquivoExportacao('Jerônimo', '2026-03-12', '2026-03-26', 'png', { numero: 1, total: 1 })).toBe(
+      'transacoes-jeronimo-2026-03-12-a-2026-03-26.png',
     )
   })
 })

@@ -70,24 +70,24 @@ describe('lançamento por voz: interpretarFala -> criarLancamento', () => {
     await apagarUsuariosTeste(ids)
   })
 
-  it('"dia 29 de setembro paguei 100 reais para o senhor Jeová" (hoje 2026-10-08) grava saída, data e favorecido', async () => {
-    const l = await lancarPorVoz('dia 29 de setembro paguei 100 reais para o senhor Jeová', '2026-10-08')
-    expect(l.valorCentavos).toBe(-10000)
-    expect(l.data).toBe('2026-09-29')
-    expect(l.descricao).toBe('Para o senhor Jeová')
-    expect(l.favorecido).toBe('Jeová')
-    expect(l.favorecidoChave).toBe('jeova')
+  it('"dia 12 de março paguei 120 reais para o senhor Jerônimo" (hoje 2026-03-26) grava saída, data e favorecido', async () => {
+    const l = await lancarPorVoz('dia 12 de março paguei 120 reais para o senhor Jerônimo', '2026-03-26')
+    expect(l.valorCentavos).toBe(-12000)
+    expect(l.data).toBe('2026-03-12')
+    expect(l.descricao).toBe('Para o senhor Jerônimo')
+    expect(l.favorecido).toBe('Jerônimo')
+    expect(l.favorecidoChave).toBe('jeronimo')
   })
 
-  it('o filtro por favorecido (Task 14b) acha o lançamento por "senhor jeova"', async () => {
-    const r = await listarLancamentosDoUsuario(U, ws, filtros({ favorecidoChave: 'senhor jeova' }))
-    expect(r.itens.map((i) => i.descricao)).toEqual(['Para o senhor Jeová'])
+  it('o filtro por favorecido (Task 14b) acha o lançamento por "senhor jeronimo"', async () => {
+    const r = await listarLancamentosDoUsuario(U, ws, filtros({ favorecidoChave: 'senhor jeronimo' }))
+    expect(r.itens.map((i) => i.descricao)).toEqual(['Para o senhor Jerônimo'])
   })
 
   it('o reconhecimento em minúsculas também cai na mesma chave e é capitalizado', async () => {
-    const l = await lancarPorVoz('200 reais para o senhor jeová', '2026-10-08')
-    expect(l.favorecido).toBe('Jeová')
-    const r = await listarLancamentosDoUsuario(U, ws, filtros({ favorecidoChave: 'jeova' }))
+    const l = await lancarPorVoz('200 reais para o senhor jerônimo', '2026-10-08')
+    expect(l.favorecido).toBe('Jerônimo')
+    const r = await listarLancamentosDoUsuario(U, ws, filtros({ favorecidoChave: 'jeronimo' }))
     expect(r.total).toBe(2)
   })
 
@@ -129,6 +129,6 @@ describe('lançamento por voz: interpretarFala -> criarLancamento', () => {
   })
 
   it('frase sem valor não gera lançamento', () => {
-    expect(interpretarFala('para o senhor Jeová', '2026-10-08')).toEqual({ ok: false, motivo: 'sem_valor' })
+    expect(interpretarFala('para o senhor Jerônimo', '2026-10-08')).toEqual({ ok: false, motivo: 'sem_valor' })
   })
 })

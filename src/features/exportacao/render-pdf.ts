@@ -25,7 +25,7 @@ const COR_SEPARADOR: [number, number, number] = [207, 207, 216]
 /**
  * A fonte padrão do jsPDF (Helvetica, WinAnsi) cobre todo o português (ç, ã, õ, é, á, ê, º…).
  * Caracteres fora dela (emoji, escritas não latinas) sairiam trocados por lixo, então viram "?".
- * Nada é transliterado: "Jeová" e "Anotações" saem exatamente assim.
+ * Nada é transliterado: "Jerônimo" e "Anotações" saem exatamente assim.
  */
 const FORA_DO_WINANSI = /[^ -~ -ÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/gu
 export function paraPdf(texto: string): string {

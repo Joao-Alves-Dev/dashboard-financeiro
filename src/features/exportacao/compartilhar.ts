@@ -1,6 +1,6 @@
 export type ResultadoCompartilhar = 'compartilhado' | 'baixado' | 'cancelado'
 
-/** "Jeová Silva" → "jeova-silva"; vazio → "todos". Só letras minúsculas sem acento, números e hífen. */
+/** "Jerônimo Silva" → "jeronimo-silva"; vazio → "todos". Só letras minúsculas sem acento, números e hífen. */
 export function slugArquivo(nome: string): string {
   const s = nome
     .normalize('NFD')
@@ -11,7 +11,7 @@ export function slugArquivo(nome: string): string {
   return s || 'todos'
 }
 
-/** `transacoes-jeova-2026-09-29-a-2026-10-08.png`; com várias partes: `...-parte-2-de-3.png`. */
+/** `transacoes-jeronimo-2026-03-12-a-2026-03-26.png`; com várias partes: `...-parte-2-de-3.png`. */
 export function nomeArquivoExportacao(
   nome: string,
   de: string,

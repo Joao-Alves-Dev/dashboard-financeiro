@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { limparFavorecido, normalizarFavorecido } from './normalizar'
 
 describe('normalizarFavorecido', () => {
-  it.each(['Jeová', 'jeova', '  Senhor   Jeová ', 'Sr. Jeová', 'seu Jeová'])('%j -> jeova', (nome) => {
-    expect(normalizarFavorecido(nome)).toBe('jeova')
+  it.each(['Jerônimo', 'jeronimo', '  Senhor   Jerônimo ', 'Sr. Jerônimo', 'seu Jerônimo'])('%j -> jeronimo', (nome) => {
+    expect(normalizarFavorecido(nome)).toBe('jeronimo')
   })
 
   it('remove tratamento e acentos', () => {
@@ -25,7 +25,7 @@ describe('normalizarFavorecido', () => {
   })
 
   it('tab e quebra de linha viram espaço', () => {
-    expect(normalizarFavorecido('Senhor\tJeová\nSilva')).toBe('jeova silva')
+    expect(normalizarFavorecido('Senhor\tJerônimo\nSilva')).toBe('jeronimo silva')
   })
 
   it('pontuação (. ,) é removida', () => {
@@ -35,8 +35,8 @@ describe('normalizarFavorecido', () => {
 
 describe('limparFavorecido', () => {
   it('apara, colapsa espaços e mantém a grafia exibida (inclui tratamento)', () => {
-    expect(limparFavorecido('  Senhor   Jeová ')).toEqual({ favorecido: 'Senhor Jeová', chave: 'jeova' })
-    expect(limparFavorecido('Jeová')).toEqual({ favorecido: 'Jeová', chave: 'jeova' })
+    expect(limparFavorecido('  Senhor   Jerônimo ')).toEqual({ favorecido: 'Senhor Jerônimo', chave: 'jeronimo' })
+    expect(limparFavorecido('Jerônimo')).toEqual({ favorecido: 'Jerônimo', chave: 'jeronimo' })
   })
 
   it('retorna null quando a chave fica vazia', () => {

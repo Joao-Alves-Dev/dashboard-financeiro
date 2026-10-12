@@ -17,8 +17,8 @@ const linhas = (n: number, anotacao = 'Viagem') =>
   }))
 
 const rel = (n: number, extra: Partial<Relatorio> = {}, anotacao?: string): Relatorio => ({
-  titulo: 'Transações efetuadas | Jeová',
-  periodo: '29/09/2026 a 08/10/2026',
+  titulo: 'Transações efetuadas | Jerônimo',
+  periodo: '12/03/2026 a 26/03/2026',
   linhas: linhas(n, anotacao),
   ...extra,
 })
@@ -80,7 +80,7 @@ describe('calcularLayoutPdf', () => {
     expect(l.paginas.map((p) => p.total !== undefined)).toEqual([false, false, true])
     expect(l.paginas[2].total?.textos.map((t) => t.texto)).toEqual(['Total', 'R$ 18.000,00'])
     // Cada parte repete título e cabeçalho (vai sozinha no WhatsApp).
-    expect(l.paginas.every((p) => p.titulo[0].texto === 'Transações efetuadas | Jeová')).toBe(true)
+    expect(l.paginas.every((p) => p.titulo[0].texto === 'Transações efetuadas | Jerônimo')).toBe(true)
   })
 
   it('25 linhas cabem em uma imagem; 26 viram duas', () => {

@@ -6,11 +6,11 @@ const HOJE = '2026-10-08'
 
 describe('interpretarComando', () => {
   it('exportação com favorecido e intervalo', () => {
-    expect(interpretarComando('exporte as transações para o senhor Jeová de 29 de setembro até 8 de outubro', HOJE)).toEqual({
+    expect(interpretarComando('exporte as transações para o senhor Jerônimo de 12 de março até 26 de março', HOJE)).toEqual({
       tipo: 'exportar',
-      favorecido: 'Jeová',
-      de: '2026-09-29',
-      ate: '2026-10-08',
+      favorecido: 'Jerônimo',
+      de: '2026-03-12',
+      ate: '2026-03-26',
       filtroTipo: 'saidas',
     })
   })
@@ -35,10 +35,10 @@ describe('interpretarComando', () => {
     })
   })
 
-  it('"manda a lista do Jeová deste mês"', () => {
-    expect(interpretarComando('manda a lista do Jeová deste mês', HOJE)).toEqual({
+  it('"manda a lista do Jerônimo deste mês"', () => {
+    expect(interpretarComando('manda a lista do Jerônimo deste mês', HOJE)).toEqual({
       tipo: 'exportar',
-      favorecido: 'Jeová',
+      favorecido: 'Jerônimo',
       de: '2026-10-01',
       ate: '2026-10-08',
       filtroTipo: 'saidas',
@@ -74,9 +74,9 @@ describe('interpretarComando', () => {
 
   it('sem período: exporta TUDO (todoPeriodo), mantendo o favorecido e o tipo', () => {
     // Task 15d: antes devolvia exportar_incompleto e o app perguntava "De que período?".
-    expect(interpretarComando('exporte para Jeová', HOJE)).toEqual({
+    expect(interpretarComando('exporte para Jerônimo', HOJE)).toEqual({
       tipo: 'exportar',
-      favorecido: 'Jeová',
+      favorecido: 'Jerônimo',
       ...PERIODO_TUDO,
       todoPeriodo: true,
       filtroTipo: 'saidas',
@@ -91,16 +91,16 @@ describe('interpretarComando', () => {
   })
 
   it('bordas da fala real', () => {
-    expect(interpretarComando('exporta a lista do seu jeová de ontem até hoje', HOJE)).toEqual({
+    expect(interpretarComando('exporta a lista do seu jerônimo de ontem até hoje', HOJE)).toEqual({
       tipo: 'exportar',
-      favorecido: 'Jeová',
+      favorecido: 'Jerônimo',
       de: '2026-10-07',
       ate: '2026-10-08',
       filtroTipo: 'saidas',
     })
-    expect(interpretarComando('me manda o relatório do jeová deste mês', HOJE)).toMatchObject({
+    expect(interpretarComando('me manda o relatório do jerônimo deste mês', HOJE)).toMatchObject({
       tipo: 'exportar',
-      favorecido: 'Jeová',
+      favorecido: 'Jerônimo',
       de: '2026-10-01',
     })
     expect(interpretarComando('gerar lista de pagamentos para a dona maria josé dos últimos 30 dias', HOJE)).toMatchObject({
@@ -122,10 +122,10 @@ describe('interpretarComando', () => {
   })
 
   it('sem verbo de exportação é lançamento (decisão: a ambiguidade cai no lançamento)', () => {
-    expect(interpretarComando('200 reais para o senhor Jeová', HOJE)).toEqual({ tipo: 'lancamento' })
-    expect(interpretarComando('paguei 100 reais para o senhor Jeová dia 29 de setembro', HOJE)).toEqual({ tipo: 'lancamento' })
+    expect(interpretarComando('200 reais para o senhor Jerônimo', HOJE)).toEqual({ tipo: 'lancamento' })
+    expect(interpretarComando('paguei 120 reais para o senhor Jerônimo dia 12 de março', HOJE)).toEqual({ tipo: 'lancamento' })
     expect(interpretarComando('', HOJE)).toEqual({ tipo: 'lancamento' })
-    expect(interpretarComando('Jeová de 29 de setembro até 8 de outubro', HOJE)).toEqual({ tipo: 'lancamento' })
+    expect(interpretarComando('Jerônimo de 12 de março até 26 de março', HOJE)).toEqual({ tipo: 'lancamento' })
   })
 })
 
@@ -224,7 +224,7 @@ describe('interpretarComando: sem período e favorecido conhecido em qualquer po
   })
 
   it('lançamento continua lançamento', () => {
-    expect(interpretarComando('paguei 100 reais para o roberto em 29 de setembro de 2026', HOJE, { favorecidosConhecidos: conhecidos })).toEqual({
+    expect(interpretarComando('paguei 120 reais para o roberto em 29 de setembro de 2026', HOJE, { favorecidosConhecidos: conhecidos })).toEqual({
       tipo: 'lancamento',
     })
   })
