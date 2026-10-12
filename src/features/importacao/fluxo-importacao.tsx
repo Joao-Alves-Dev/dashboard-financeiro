@@ -194,6 +194,8 @@ export function FluxoImportacao({ workspaceId, contas, categorias }: Props) {
             analisar(null)
           }}
         >
+          {/* Conta única: usada em silêncio (o importador sempre recebe ao menos a Carteira). */}
+          {contas.length > 1 && (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="conta-importacao">{t('conta')}</Label>
             <select
@@ -209,6 +211,7 @@ export function FluxoImportacao({ workspaceId, contas, categorias }: Props) {
               ))}
             </select>
           </div>
+          )}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="arquivo-extrato">{t('arquivo')}</Label>
             <Input

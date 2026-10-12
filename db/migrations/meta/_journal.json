@@ -78,6 +78,13 @@
       "when": 1791671756666,
       "tag": "0010_orientador",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791839899596,
+      "tag": "0011_conta_padrao",
+      "breakpoints": true
     }
   ]
 }

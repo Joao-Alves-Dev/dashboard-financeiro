@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server'
-import { listarCategorias, listarContas } from '@/features/config/queries'
+import { garantirContaPadrao, listarCategorias, listarContas } from '@/features/config/queries'
 import { FluxoImportacao } from '@/features/importacao/fluxo-importacao'
 import { Historico } from '@/features/importacao/historico'
 import { listarImportacoes } from '@/features/importacao/queries'
@@ -8,12 +8,19 @@ import { obterWorkspace } from '@/features/workspaces/queries'
 export default async function PaginaImportar({ params }: PageProps<'/w/[id]/importar'>) {
   const { id } = await params
   const ws = await obterWorkspace(id)
-  const [contas, categorias, historico, t] = await Promise.all([
+  const [contasLidas, categorias, historico, t] = await Promise.all([
     listarContas(ws.id),
     listarCategorias(ws.id),
     listarImportacoes(ws.id),
     getTranslations('importacao'),
   ])
+
+  // O layout e a página carregam em paralelo: sem nenhuma conta, cria a Carteira antes de montar o importador.
+  let contas = contasLidas
+  if (contas.length === 0) {
+    await garantirContaPadrao(ws.id)
+    contas = await listarContas(ws.id)
+  }
 
   return (
     <section className="flex flex-col gap-6">

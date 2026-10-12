@@ -69,7 +69,8 @@ export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, co
     setFormAberto(true)
   }
 
-  const semConta = contas.length === 0
+  // Com uma conta só ela é invisível (nem coluna, nem seletor); sem conta, o servidor cria a Carteira ao lançar.
+  const mostrarConta = contas.length > 1
 
   return (
     <div className="flex flex-col gap-4">
@@ -82,20 +83,10 @@ export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, co
             <FileDownIcon className="size-4" />
             {t('exportar')}
           </Link>
-          {semConta ? (
-            <Link
-              href={`/w/${workspaceId}/config?aba=contas`}
-              className={buttonVariants()}
-            >
-              <PlusIcon className="size-4" />
-              {t('criarConta')}
-            </Link>
-          ) : (
-            <Button onClick={abrirNovo}>
-              <PlusIcon />
-              {t('novo')}
-            </Button>
-          )}
+          <Button onClick={abrirNovo}>
+            <PlusIcon />
+            {t('novo')}
+          </Button>
         </div>
       </div>
 
@@ -117,19 +108,8 @@ export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, co
 
       {itens.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
-          {semConta ? (
-            <>
-              <p className="font-medium">{t('semConta')}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t('semContaDescricao')}</p>
-            </>
-          ) : (
-            <>
-              <p className="font-medium">{t('vazio')}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {temFiltro ? t('vazioFiltro') : t('vazioDescricao')}
-              </p>
-            </>
-          )}
+          <p className="font-medium">{t('vazio')}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{temFiltro ? t('vazioFiltro') : t('vazioDescricao')}</p>
         </div>
       ) : (
         <>
@@ -148,7 +128,7 @@ export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, co
                   <TableHead>{t('colunas.data')}</TableHead>
                   <TableHead>{t('colunas.descricao')}</TableHead>
                   <TableHead>{t('colunas.favorecido')}</TableHead>
-                  <TableHead>{t('colunas.conta')}</TableHead>
+                  {mostrarConta && <TableHead>{t('colunas.conta')}</TableHead>}
                   <TableHead>{t('colunas.categoria')}</TableHead>
                   <TableHead className="text-right">{t('colunas.valor')}</TableHead>
                   <TableHead className="w-24 text-right">
@@ -178,7 +158,7 @@ export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, co
                     <TableCell className="max-w-48">
                       {l.favorecido ? <span className="line-clamp-2">{l.favorecido}</span> : <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell>{nomeConta.get(l.contaId) ?? '—'}</TableCell>
+                    {mostrarConta && <TableCell>{nomeConta.get(l.contaId) ?? '—'}</TableCell>}
                     <TableCell>{l.categoriaId ? (nomeCategoria.get(l.categoriaId) ?? '—') : <span className="text-muted-foreground">{t('semCategoria')}</span>}</TableCell>
                     <TableCell className={`whitespace-nowrap text-right font-medium tabular-nums ${classeValor(l.valorCentavos)}`}>
                       {formatarBRL(l.valorCentavos)}
@@ -221,7 +201,7 @@ export function TabelaLancamentos({ workspaceId, tipoWorkspace, itens, total, co
                       </p>
                     )}
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {formatarDataBR(l.data)} · {nomeConta.get(l.contaId) ?? '—'} ·{' '}
+                      {formatarDataBR(l.data)} · {mostrarConta ? `${nomeConta.get(l.contaId) ?? '—'} · ` : ''}
                       {l.categoriaId ? (nomeCategoria.get(l.categoriaId) ?? '—') : t('semCategoria')}
                     </p>
                     {l.status === 'pendente' && (

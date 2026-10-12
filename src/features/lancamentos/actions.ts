@@ -8,6 +8,7 @@ import { ErroDominio } from '@/lib/erro-dominio'
 import { executar, validarEntrada } from '@/lib/executar-action'
 import { exigirUsuario } from '@/lib/sessao'
 import { ehUuid } from '@/lib/uuid'
+import { garantirContaPadraoDoUsuario } from '@/features/config/servico'
 import { lancamentoSchema } from './schemas'
 import {
   categorizarEmLoteDoUsuario,
@@ -30,7 +31,15 @@ export async function criarLancamento(
   input: LancamentoForm,
 ): Promise<ActionResult<{ id: string }>> {
   const u = await exigirUsuario()
-  const v = await validarEntrada(lancamentoSchema, input)
+  // Sem conta informada (a tela não pergunta quando há uma só): usa a conta padrão do workspace,
+  // criando a "Carteira" se ele não tiver nenhuma. Não depende de a migração 0011 estar aplicada.
+  let entrada = input
+  if (!input.contaId?.trim() && ehUuid(workspaceId)) {
+    const padrao = await executar(() => garantirContaPadraoDoUsuario(u.id, workspaceId))
+    if (!padrao.ok) return padrao
+    entrada = { ...input, contaId: padrao.data }
+  }
+  const v = await validarEntrada(lancamentoSchema, entrada)
   if (!v.ok) return v.resultado
   const r = await executar(async () => {
     exigirUuid(workspaceId)

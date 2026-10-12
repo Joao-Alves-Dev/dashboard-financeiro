@@ -88,6 +88,7 @@ export function FiltrosLancamentosForm({
         <Label htmlFor="f-ate">{t('ate')}</Label>
         <Input id="f-ate" type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
       </div>
+      {contas.length > 1 && (
       <div className="flex min-w-0 flex-col gap-1.5">
         <Label>{t('conta')}</Label>
         <Select value={contaId} items={itensConta} onValueChange={(v) => setContaId(v ?? TODAS)}>
@@ -103,6 +104,7 @@ export function FiltrosLancamentosForm({
           </SelectContent>
         </Select>
       </div>
+      )}
       <div className="flex min-w-0 flex-col gap-1.5">
         <Label>{t('categoria')}</Label>
         <Select value={categoriaId} items={itensCategoria} onValueChange={(v) => setCategoriaId(v ?? TODAS)}>

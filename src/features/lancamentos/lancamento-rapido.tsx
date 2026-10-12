@@ -1,14 +1,13 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { MicIcon } from 'lucide-react'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { CampoFavorecido } from '@/features/favorecido/campo-favorecido'
 import { hojeLocal } from '@/lib/formato'
@@ -61,7 +60,7 @@ export function LancamentoRapido(props: PropsLancamentoRapido) {
         <SheetHeader className="px-5 pt-5 pb-2">
           <div className="flex items-center justify-between gap-3 pr-10">
             <SheetTitle className="text-lg">{t('titulo')}</SheetTitle>
-            {props.aoFalar && props.contas.length > 0 && (
+            {props.aoFalar && (
               <Button
                 type="button"
                 variant="outline"
@@ -79,30 +78,9 @@ export function LancamentoRapido(props: PropsLancamentoRapido) {
           <SheetDescription className="sr-only">{t('descricao')}</SheetDescription>
         </SheetHeader>
         {/* O Popup desmonta ao fechar, então o formulário reinicia (e relê os valores iniciais) a cada abertura. */}
-        {props.contas.length === 0 ? (
-          <SemConta workspaceId={props.workspaceId} aoMudar={props.aoMudar} />
-        ) : (
-          <Corpo {...props} />
-        )}
+        <Corpo {...props} />
       </SheetContent>
     </Sheet>
-  )
-}
-
-function SemConta({ workspaceId, aoMudar }: { workspaceId: string; aoMudar: (a: boolean) => void }) {
-  const t = useTranslations('rapido')
-  return (
-    <div className="flex flex-col gap-3 px-5 pb-6">
-      <p className="font-medium">{t('semContaTitulo')}</p>
-      <p className="text-sm text-muted-foreground">{t('semContaTexto')}</p>
-      <Link
-        href={`/w/${workspaceId}/config`}
-        onClick={() => aoMudar(false)}
-        className={cn(buttonVariants(), 'h-12 text-base')}
-      >
-        {t('semContaLink')}
-      </Link>
-    </div>
   )
 }
 
@@ -130,7 +108,8 @@ function Corpo({
   const [descricao, setDescricao] = useState(descricaoInicial ?? '')
   const [data, setData] = useState(dataInicial ?? hojeLocal())
   const [contaId, setContaId] = useState(
-    contaIdInicial && contas.some((c) => c.id === contaIdInicial) ? contaIdInicial : (contaPadraoId ?? contas[0].id),
+    // Sem conta nenhuma o servidor usa (e cria, se preciso) a conta padrão: o id vai vazio.
+    contaIdInicial && contas.some((c) => c.id === contaIdInicial) ? contaIdInicial : (contaPadraoId ?? contas[0]?.id ?? ''),
   )
   const [categoriaId, setCategoriaId] = useState<string | null>(categoriaIdInicial ?? null)
   const [todas, setTodas] = useState(false)
@@ -313,7 +292,9 @@ function Corpo({
           </button>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className={cn('grid gap-3', contas.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
+          {/* Uma conta só (ou nenhuma) fica invisível: ninguém precisa saber o que é "conta" para lançar. */}
+          {contas.length > 1 && (
           <div className="flex flex-col gap-1.5">
             <Label>{t('conta')}</Label>
             <Select value={contaId} items={itensConta} onValueChange={(v) => setContaId(v ?? contaId)}>
@@ -330,6 +311,7 @@ function Corpo({
             </Select>
             {campos.contaId && <p className="text-sm text-destructive">{campos.contaId}</p>}
           </div>
+          )}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="rapido-data">{t('data')}</Label>
             <Input

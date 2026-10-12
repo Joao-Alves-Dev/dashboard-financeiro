@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, asc, count, desc, eq } from 'drizzle-orm'
+import { and, asc, count, desc, eq, sql } from 'drizzle-orm'
 import { comUsuario } from '@/db/com-usuario'
 import { categorias, contas, lancamentos, regrasCategoria } from '@/db/schema'
 import { ErroDominio } from '@/lib/erro-dominio'
@@ -22,6 +22,35 @@ export async function listarContasDoUsuario(userId: string, ws: string): Promise
       .groupBy(lancamentos.contaId)
     const porConta = new Map(contagens.map((c) => [c.contaId, Number(c.n)]))
     return lista.map((c) => ({ ...c, qtdLancamentos: porConta.get(c.id) ?? 0 }))
+  })
+}
+
+/** Conta criada em silêncio quando o workspace não tem nenhuma (quem usa só a voz não precisa saber o que é conta). */
+export const NOME_CONTA_PADRAO = 'Carteira'
+
+/**
+ * Devolve o id da conta padrão do workspace (a primeira por nome), criando a "Carteira" (tipo dinheiro, saldo
+ * inicial 0) SOMENTE se o workspace não tem nenhuma conta. Idempotente e seguro contra concorrência: o lock
+ * advisory de transação serializa as chamadas do mesmo workspace e o `insert ... where not exists` roda na
+ * mesma transação, então 5 chamadas simultâneas criam exatamente 1 conta (sem o lock, no READ COMMITTED
+ * todas veriam "nenhuma conta"). Roda sob RLS: quem não é membro do workspace recebe erro, nunca cria conta.
+ * Funciona com ou sem a migração 0011 (que faz `criar_workspace` já criar a Carteira).
+ */
+export async function garantirContaPadraoDoUsuario(userId: string, ws: string): Promise<string> {
+  return comUsuario(userId, async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${ws}::text, 0))`)
+    await tx.execute(sql`
+      insert into contas (workspace_id, nome, tipo, saldo_inicial_centavos)
+      select ${ws}::uuid, ${NOME_CONTA_PADRAO}, 'dinheiro', 0
+      where not exists (select 1 from contas where workspace_id = ${ws}::uuid)`)
+    const [c] = await tx
+      .select({ id: contas.id })
+      .from(contas)
+      .where(eq(contas.workspaceId, ws))
+      .orderBy(asc(contas.nome), asc(contas.id))
+      .limit(1)
+    if (!c) throw new ErroDominio('config.contaNaoEncontrada')
+    return c.id
   })
 }
 

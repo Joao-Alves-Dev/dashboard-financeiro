@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm'
 import { comUsuario } from '@/db/com-usuario'
 import { categorias, contas, lancamentos } from '@/db/schema'
 import { variacaoPercentual } from './formatar'
+import { chaveRotuloSaldo } from './rotulo-saldo'
 import { inicioDoMes, mesAnterior, somarDias, ultimoDiaDoMes } from './periodo'
 import type { GastoCategoria } from './agrupar'
 import type { LinhaResumoMensal } from './serie'
@@ -92,6 +93,8 @@ export async function orcamentoVsRealizadoDoUsuario(userId: string, ws: string, 
 export type TotaisMes = { entradas: number; saidas: number; resultado: number }
 export type Kpis = {
   saldoAtual: number
+  /** "Saldo atual" só se alguma conta tem saldo inicial diferente de zero; senão "Resultado acumulado". */
+  rotuloSaldo: 'saldoAtual' | 'resultadoAcumulado'
   mes: TotaisMes
   anterior: TotaisMes
   /** Variação % sobre o mês anterior; nula quando o anterior é zero. */
@@ -106,6 +109,10 @@ export async function kpisDoUsuario(userId: string, ws: string, hoje: string): P
   const mesPrev = mesAnterior(hoje)
   return comUsuario(userId, async (tx) => {
     const s = await tx.execute(sql`select saldo_atual(${ws}::uuid)::text as saldo`)
+    const saldosIniciais = await tx
+      .select({ saldoInicialCentavos: contas.saldoInicialCentavos })
+      .from(contas)
+      .where(eq(contas.workspaceId, ws))
     const linhas = await resumoMensalTx(tx, ws, mesPrev, ultimoDiaDoMes(hoje))
     const porMes = new Map(linhas.map((l) => [l.mes, l]))
     const pega = (m: string): TotaisMes => {
@@ -116,6 +123,7 @@ export async function kpisDoUsuario(userId: string, ws: string, hoje: string): P
     const anterior = pega(mesPrev)
     return {
       saldoAtual: n((s.rows[0] as Linha).saldo),
+      rotuloSaldo: chaveRotuloSaldo(saldosIniciais.map((c) => ({ saldoInicialCentavos: Number(c.saldoInicialCentavos) }))),
       mes,
       anterior,
       variacao: {

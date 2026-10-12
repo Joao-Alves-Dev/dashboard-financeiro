@@ -1,6 +1,7 @@
 import 'server-only'
 import { exigirUsuario } from '@/lib/sessao'
 import {
+  garantirContaPadraoDoUsuario,
   listarCategoriasDoUsuario,
   listarContasDoUsuario,
   listarRegrasDoUsuario,
@@ -24,4 +25,10 @@ export async function listarCategorias(ws: string): Promise<Categoria[]> {
 export async function listarRegras(ws: string): Promise<RegraDb[]> {
   const u = await exigirUsuario()
   return listarRegrasDoUsuario(u.id, ws)
+}
+
+/** Cria a "Carteira" se o workspace não tem nenhuma conta; devolve o id da conta padrão. */
+export async function garantirContaPadrao(ws: string): Promise<string> {
+  const u = await exigirUsuario()
+  return garantirContaPadraoDoUsuario(u.id, ws)
 }

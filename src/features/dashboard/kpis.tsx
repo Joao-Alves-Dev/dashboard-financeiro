@@ -65,12 +65,18 @@ export function KpiTile({
 
 export async function KpisBloco({ ws, hoje }: { ws: string; hoje: string }) {
   const [t, k] = await Promise.all([getTranslations('dashboard.kpis'), obterKpis(ws, hoje)])
+  // Sem saldo inicial em nenhuma conta o número é só a soma dos lançamentos: não é um saldo bancário.
+  const chave = k.rotuloSaldo
   const vs = (pct: string) => t('vsAnterior', { pct })
   const comum = { textoVariacao: vs, textoSemComparacao: t('semComparacao'), textoIgual: t('igual') }
   return (
     <section aria-label={`${t('grupo')} — ${rotuloMesLongo(inicioDoMes(hoje))}`}>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiTile rotulo={t('saldoAtual')} valor={formatarBRL(k.saldoAtual)} ajuda={t('saldoAtualAjuda')} />
+        <KpiTile
+          rotulo={t(chave)}
+          valor={formatarBRL(k.saldoAtual)}
+          ajuda={t(chave === 'saldoAtual' ? 'saldoAtualAjuda' : 'resultadoAcumuladoAjuda')}
+        />
         <KpiTile rotulo={t('entradasMes')} valor={formatarBRL(k.mes.entradas)} variacao={k.variacao.entradas} sentido="subir-bom" {...comum} />
         <KpiTile rotulo={t('saidasMes')} valor={formatarBRL(k.mes.saidas)} variacao={k.variacao.saidas} sentido="subir-ruim" {...comum} />
         <KpiTile rotulo={t('resultadoMes')} valor={formatarBRL(k.mes.resultado)} variacao={k.variacao.resultado} sentido="subir-bom" {...comum} />

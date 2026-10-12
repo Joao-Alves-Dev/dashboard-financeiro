@@ -173,6 +173,8 @@ function CorpoForm({ workspaceId, tipoWorkspace, contas, categorias, favorecidos
         erro={campos.favorecido}
       />
 
+      {/* Com uma conta só (ou nenhuma: o servidor usa a Carteira) ninguém precisa escolher. */}
+      {contas.length > 1 && (
       <div className="flex flex-col gap-1.5">
         <Label>{t('campos.conta')}</Label>
         <Select value={contaId} items={itensConta} onValueChange={(v) => setContaId(v ?? '')}>
@@ -189,6 +191,7 @@ function CorpoForm({ workspaceId, tipoWorkspace, contas, categorias, favorecidos
         </Select>
         {campos.contaId && <p className="text-sm text-destructive">{campos.contaId}</p>}
       </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <Label>{t('campos.categoria')}</Label>

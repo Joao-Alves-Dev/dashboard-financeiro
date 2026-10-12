@@ -43,12 +43,8 @@ export function ContasConfig({ workspaceId, contas }: { workspaceId: string; con
         </Button>
       </div>
 
-      {contas.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="font-medium">{t('vazio')}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{t('vazioDescricao')}</p>
-        </div>
-      ) : (
+      {/* Sempre existe ao menos a "Carteira" (criada em silêncio): não há estado vazio. */}
+      {contas.length > 0 && (
         <ul className="flex flex-col divide-y rounded-lg border">
           {contas.map((c) => (
             <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
@@ -188,7 +184,7 @@ function FormConta({
         {campos.tipo && <p className="text-sm text-destructive">{campos.tipo}</p>}
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="conta-saldo">{t('saldoInicial')}</Label>
+        <Label htmlFor="conta-saldo">{t('saldoInicialOpcional')}</Label>
         <Input
           id="conta-saldo"
           inputMode="decimal"

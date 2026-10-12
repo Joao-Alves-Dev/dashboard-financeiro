@@ -8,7 +8,12 @@ import { listarWorkspacesDoUsuario, obterWorkspaceDoUsuario } from '@/features/w
 import { SeletorWorkspace } from '@/features/workspaces/seletor-workspace'
 import { NavegacaoWorkspace } from '@/features/workspaces/navegacao-workspace'
 import { MenuMais } from '@/features/workspaces/menu-mais'
-import { listarCategoriasDoUsuario, listarContasDoUsuario, listarRegrasDoUsuario } from '@/features/config/servico'
+import {
+  garantirContaPadraoDoUsuario,
+  listarCategoriasDoUsuario,
+  listarContasDoUsuario,
+  listarRegrasDoUsuario,
+} from '@/features/config/servico'
 import { listarFavorecidosDoUsuario } from '@/features/favorecido/servico'
 import { categoriasFrequentesDoUsuario } from '@/features/lancamentos/servico'
 import { escolherContaPadrao } from '@/features/lancamentos/categorias-frequentes'
@@ -22,7 +27,7 @@ export default async function LayoutWorkspace({ children, params }: LayoutProps<
   const atual = await obterWorkspaceDoUsuario(usuario.id, id)
   const t = await getTranslations()
   const jar = await cookies()
-  const [lista, contas, categorias, frequentes, favorecidos, regras] = await Promise.all([
+  const [lista, contasLidas, categorias, frequentes, favorecidos, regras] = await Promise.all([
     listarWorkspacesDoUsuario(usuario.id),
     listarContasDoUsuario(usuario.id, atual.id),
     listarCategoriasDoUsuario(usuario.id, atual.id),
@@ -30,6 +35,13 @@ export default async function LayoutWorkspace({ children, params }: LayoutProps<
     listarFavorecidosDoUsuario(usuario.id, atual.id),
     listarRegrasDoUsuario(usuario.id, atual.id),
   ])
+  // Workspace sem nenhuma conta (antigo, ou criado antes da migração 0011): cria a "Carteira" em silêncio, para
+  // o lançamento rápido, a voz e o formulário sempre terem uma conta a usar.
+  let contas = contasLidas
+  if (contas.length === 0) {
+    await garantirContaPadraoDoUsuario(usuario.id, atual.id)
+    contas = await listarContasDoUsuario(usuario.id, atual.id)
+  }
   // O cookie é do cliente: só vale se o id for de uma conta deste workspace (senão, a primeira).
   const contaPadraoId = escolherContaPadrao(contas, jar.get(`ultima_conta_${atual.id}`)?.value)
   const opcao = (c: { id: string; nome: string; natureza: string }) => ({ id: c.id, nome: c.nome, natureza: c.natureza })
