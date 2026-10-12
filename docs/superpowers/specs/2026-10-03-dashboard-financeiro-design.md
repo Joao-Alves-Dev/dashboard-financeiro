@@ -197,6 +197,8 @@ Corrigido: (1) dados reais (nome de pessoa e pagamentos) removidos dos testes e 
 
 Mantido conscientemente: o histórico do Git **não** foi reescrito (decisão do usuário); commits antigos continuam com os dados e o e-mail anteriores.
 
+Vercel (feito no painel, 2026-10-12): `DATABASE_URL`, `BETTER_AUTH_SECRET` e `CRON_SECRET` restritas ao ambiente **Production** (antes: Production e Preview), para que deploys de preview de branches não recebam credenciais de produção. Se um dia houver previews, usar uma branch Neon `preview` com `app_user` próprio e segredos distintos.
+
 ## Tratamento de erros
 
 - Server Actions retornam `{ ok: true, data } | { ok: false, erro }`; erros Zod mapeados para campos.
