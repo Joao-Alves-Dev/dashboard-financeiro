@@ -107,3 +107,12 @@ export function dataPorExtenso(iso: string, hoje: string): string {
   if (iso === somarDias(hoje, -2)) return `anteontem, ${completo}`
   return completo
 }
+
+/**
+ * Aviso para a confirmação quando a data falada está no futuro: 'futuro' (data > hoje) ou 'ano', o aviso mais
+ * forte, quando passa de 366 dias à frente (provável ano errado, ex.: "2036" em vez de "2026").
+ */
+export function avisoDeData(data: string, hoje: string): 'futuro' | 'ano' | null {
+  if (data <= hoje) return null
+  return data > somarDias(hoje, 366) ? 'ano' : 'futuro'
+}

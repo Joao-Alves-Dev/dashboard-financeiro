@@ -226,3 +226,101 @@ describe('tipo de retorno', () => {
     expect(r.ok).toBe(true)
   })
 })
+
+describe('interpretarFala: data completa falada (Task 15d, hoje = 2026-10-08)', () => {
+  const H = '2026-10-08'
+
+  it.each([
+    'paguei 100 reais para o roberto em 29 de setembro de 2026',
+    'paguei 100 reais para o roberto no dia 29 de setembro de 2026',
+    'paguei 100 reais para o roberto dia 29 de setembro de 2026',
+    'paguei 100 reais para o roberto 29 de setembro de 2026',
+    'paguei 100 reais para o roberto em 29 de setembro',
+    'paguei 100 reais para o roberto 29 de 9 de 2026',
+    'paguei 100 reais para o roberto 29 do 9 de 2026',
+    'paguei 100 reais para o roberto em 29/09/2026',
+    'paguei 100 reais para o roberto 29/09',
+    'paguei 100 reais para o roberto 29-09-2026',
+    'paguei 100 reais para o roberto 29.09.2026',
+    'paguei 100 reais para o roberto data 29/09/2026',
+    'paguei 100 reais para o roberto em vinte e nove de setembro de dois mil e vinte e seis',
+    'paguei cem reais para o roberto em vinte e nove de nove de dois mil e vinte e seis',
+    'paguei 100 reais para o roberto dia vinte e nove de setembro',
+    'paguei 100 reais para o roberto dia 29/09/2026',
+  ])('%s', (fala) => {
+    const r = ok(fala, H)
+    expect(r.data).toBe('2026-09-29')
+    expect(r.valorCentavos).toBe(-10000)
+    expect(r.favorecido).toBe('Roberto')
+    // As palavras da data não ficam na descrição.
+    expect(r.descricao).toBe('Para o roberto')
+  })
+
+  it('data no começo da frase e sem marca de dinheiro', () => {
+    expect(ok('29/09/2026 paguei 100 reais', H)).toMatchObject({ data: '2026-09-29', valorCentavos: -10000 })
+    expect(ok('100 reais dia 29/09/2026', H)).toMatchObject({ data: '2026-09-29', valorCentavos: -10000 })
+    const r = ok('paguei 100 para o roberto em 29 de setembro de 2026', H)
+    expect(r).toMatchObject({ data: '2026-09-29', valorCentavos: -10000, favorecido: 'Roberto' })
+  })
+
+  it('a data falada nunca vira o valor', () => {
+    expect(ok('paguei 2026 reais dia 29/09/2026', H)).toMatchObject({ data: '2026-09-29', valorCentavos: -202600 })
+    expect(ok('paguei 9 reais em 29 de 9 de 2026', H)).toMatchObject({ data: '2026-09-29', valorCentavos: -900 })
+    expect(ok('recebi 29 reais em 29/09/2026', H)).toMatchObject({ data: '2026-09-29', valorCentavos: 2900 })
+    expect(interpretarFala('em 29 de setembro de 2026', H)).toEqual({ ok: false, motivo: 'sem_valor' })
+    expect(interpretarFala('29/09/2026', H)).toEqual({ ok: false, motivo: 'sem_valor' })
+  })
+
+  it('"mil" e "dois mil" do valor não são confundidos com o ano', () => {
+    expect(ok('paguei mil reais em 29 de setembro de dois mil e vinte e seis', H)).toMatchObject({
+      data: '2026-09-29',
+      valorCentavos: -100000,
+    })
+    expect(ok('paguei dia 29 de setembro de dois mil reais', H)).toMatchObject({
+      data: '2026-09-29',
+      valorCentavos: -200000,
+    })
+    expect(ok('paguei dois mil reais em vinte e nove de nove de dois mil e vinte e seis', H)).toMatchObject({
+      data: '2026-09-29',
+      valorCentavos: -200000,
+    })
+  })
+
+  it('ano omitido segue a regra atual; futuro explícito é aceito', () => {
+    expect(ok('paguei 50 reais 29 de setembro', H).data).toBe('2026-09-29')
+    expect(ok('paguei 50 reais 15 de dezembro', H).data).toBe('2025-12-15')
+    expect(ok('paguei 50 reais 15/12', H).data).toBe('2025-12-15')
+    expect(ok('paguei 50 reais em 15 de dezembro de 2026', H).data).toBe('2026-12-15')
+    expect(ok('paguei 50 reais em 15/12/2027', H).data).toBe('2027-12-15')
+  })
+
+  it('ano de dois dígitos com barra', () => {
+    expect(ok('paguei 50 reais em 29/09/26', H).data).toBe('2026-09-29')
+  })
+
+  it('data inválida é ignorada: fica hoje e as palavras ficam na descrição', () => {
+    for (const [fala, trecho] of [
+      ['paguei 100 reais em 31/02/2026', '31/02/2026'],
+      ['paguei 100 reais em 31 de abril de 2026', '31 de abril de 2026'],
+      ['paguei 100 reais em 29/02/2026', '29/02/2026'],
+      ['paguei 100 reais em 29 de setembro de 1999', '29 de setembro de 1999'],
+      ['paguei 100 reais em 29/09/2101', '29/09/2101'],
+    ] as const) {
+      const r = ok(fala, H)
+      expect(r.data, fala).toBe(H)
+      expect(r.valorCentavos, fala).toBe(-10000)
+      expect(r.descricao, fala).toContain(trecho)
+    }
+  })
+
+  it('ano bissexto vale', () => {
+    expect(ok('paguei 100 reais em 29/02/2028', H).data).toBe('2028-02-29')
+  })
+
+  it('números comuns continuam sendo valor', () => {
+    expect(ok('paguei 29 reais', H)).toMatchObject({ data: H, valorCentavos: -2900 })
+    expect(ok('paguei 1.500,50 de aluguel', H)).toMatchObject({ data: H, valorCentavos: -150050 })
+    expect(ok('paguei 10.000 reais', H)).toMatchObject({ data: H, valorCentavos: -1000000 })
+    expect(ok('dia 20 paguei 50 reais', H).data).toBe('2026-09-20')
+  })
+})

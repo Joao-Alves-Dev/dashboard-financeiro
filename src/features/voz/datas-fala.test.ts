@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dataPorExtenso, diaDaSemana, diaMesParaData, numeroDoMes, somarDias } from './datas-fala'
+import { avisoDeData, dataPorExtenso, diaDaSemana, diaMesParaData, numeroDoMes, somarDias } from './datas-fala'
 
 describe('diaDaSemana', () => {
   it('0 domingo ... 6 sábado', () => {
@@ -73,5 +73,20 @@ describe('dataPorExtenso', () => {
     expect(dataPorExtenso('2026-09-29', '2026-10-08')).toBe('29 de setembro')
     expect(dataPorExtenso('2025-12-10', '2026-10-08')).toBe('10 de dezembro de 2025')
     expect(dataPorExtenso('2026-10-01', '2026-10-08')).toBe('1º de outubro')
+  })
+})
+
+describe('avisoDeData', () => {
+  const hoje = '2026-10-08'
+  it('hoje e passado: sem aviso', () => {
+    expect(avisoDeData('2026-10-08', hoje)).toBeNull()
+    expect(avisoDeData('2026-09-29', hoje)).toBeNull()
+    expect(avisoDeData('2020-01-01', hoje)).toBeNull()
+  })
+  it('amanhã em diante: futuro; mais de 366 dias à frente: confira o ano', () => {
+    expect(avisoDeData('2026-10-09', hoje)).toBe('futuro')
+    expect(avisoDeData(somarDias(hoje, 366), hoje)).toBe('futuro')
+    expect(avisoDeData(somarDias(hoje, 367), hoje)).toBe('ano')
+    expect(avisoDeData('2030-01-01', hoje)).toBe('ano')
   })
 })

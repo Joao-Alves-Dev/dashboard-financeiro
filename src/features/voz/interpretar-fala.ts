@@ -31,7 +31,7 @@ export function tokenizar(texto: string): Tok[] {
   }))
 }
 
-const PREPOSICOES_ANTES_DE_DATA = new Set(['no', 'na', 'em', 'do', 'da'])
+const PREPOSICOES_ANTES_DE_DATA = new Set(['no', 'na', 'em', 'do', 'da', 'de'])
 const PREPOSICOES_ANTES_DE_VALOR = new Set(['de', 'do', 'da', 'no', 'na', 'em', 'por', 'valor'])
 const COMANDOS_ENTRADA = new Set(['recebi', 'recebimento', 'recebido', 'entrou'])
 const COMANDOS_SAIDA = new Set(['paguei', 'pago', 'pagamento', 'gastei'])
@@ -44,11 +44,112 @@ const MULTIPLICADORES = new Map([
 
 // ---------- datas ----------
 
+const ANO_MIN = 2000
+const ANO_MAX = 2100
+/** "29/09/2026", "29-09", "29.09.2026": dia, separador, mês e ano opcional (2 ou 4 dígitos). */
+const DATA_NUMERICA = /^(\d{1,2})([/.-])(\d{1,2})(?:\2(\d{4}|\d{2}))?$/
+const DE_OU_DO = new Set(['de', 'do'])
+const MOEDA = /^(reais|real|centavos?)$/
+
+type LeituraData = { iso: string | null; fim: number }
+
+/** Dia/mês/ano explícitos -> 'YYYY-MM-DD' ou null (dia/mês inexistente, bissexto, ano fora de 2000-2100). */
+function resolverDataFalada(dia: number, mes: number, ano: number | null, hoje: string): string | null {
+  if (ano !== null && (ano < ANO_MIN || ano > ANO_MAX)) return null
+  return diaMesParaData(dia, mes, ano, hoje)
+}
+
+/** Dia do mês na fala: "29", "29º", "vinte e nove" (até 31) ou "primeiro" (só antes de "de"). */
+function lerDiaFalado(t: Tok[], k: number): { dia: number; fim: number } | null {
+  const tk = livre(t, k)
+  if (!tk) return null
+  if (/^\d{1,2}[ºo°]?$/.test(tk.l)) return { dia: parseInt(tk.l, 10), fim: k + 1 }
+  if (tk.l === 'primeiro') return livre(t, k + 1) && DE_OU_DO.has(t[k + 1].l) ? { dia: 1, fim: k + 1 } : null
+  const e = lerExtenso(t, k)
+  return e && e.valor >= 1 && e.valor <= 31 && !e.temMil ? { dia: e.valor, fim: e.fim } : null
+}
+
+/** Mês dito como número ("9", "nove"), 1 a 12; só vale no padrão "<dia> de <mês> de <ano>". */
+function lerMesNumerico(t: Tok[], k: number): { mes: number; fim: number } | null {
+  const tk = livre(t, k)
+  if (!tk) return null
+  const v = /^\d{1,2}$/.test(tk.l) ? Number(tk.l) : ehPalavraNumerica(tk.l) ? extensoParaNumero(tk.l) : null
+  return v !== null && v >= 1 && v <= 12 ? { mes: v, fim: k + 1 } : null
+}
+
+/**
+ * Ano de quatro dígitos ou por extenso ("dois mil e vinte e seis"). Número seguido de "reais"/"centavos"
+ * é dinheiro, não ano ("de dois mil reais"); por extenso o ano precisa ter "mil".
+ */
+function lerAnoFalado(t: Tok[], k: number): { ano: number; fim: number } | null {
+  const tk = livre(t, k)
+  if (!tk) return null
+  let ano: number
+  let fim: number
+  if (/^\d{4}$/.test(tk.l)) {
+    ano = Number(tk.l)
+    fim = k + 1
+  } else {
+    const e = lerExtenso(t, k)
+    if (!e || !e.temMil) return null
+    ano = e.valor
+    fim = e.fim
+  }
+  const prox = livre(t, fim)
+  return prox && MOEDA.test(prox.l) ? null : { ano, fim }
+}
+
+/**
+ * Lê uma data a partir de `k`: `dd/mm[/aaaa]` (também `-` e, com ano, `.`), `<dia> de <mês> [de <ano>]` com o
+ * mês por nome, e `<dia> de <número> de <ano>` com o mês em número ou por extenso (o ano é obrigatório, para
+ * "50 de 3" não virar data). Com `comPrefixo` ("dia N"), o dia sozinho também vale. `iso` nulo = data com
+ * a forma certa, mas inexistente: o chamador a ignora.
+ */
+function lerDataFalada(t: Tok[], k: number, hoje: string, comPrefixo: boolean): LeituraData | null {
+  const tk = livre(t, k)
+  if (!tk) return null
+  const num = DATA_NUMERICA.exec(tk.l)
+  if (num) {
+    const [, d, sep, m, a] = num
+    if (sep === '.' && (a === undefined || a.length !== 4)) return null
+    const ano = a === undefined ? null : a.length === 2 ? 2000 + Number(a) : Number(a)
+    return { iso: resolverDataFalada(Number(d), Number(m), ano, hoje), fim: k + 1 }
+  }
+  const dia = lerDiaFalado(t, k)
+  if (!dia) return null
+  const soDia = (): LeituraData | null =>
+    comPrefixo ? { iso: diaMesParaData(dia.dia, null, null, hoje), fim: dia.fim } : null
+  const de = livre(t, dia.fim)
+  if (!de || !DE_OU_DO.has(de.l)) return soDia()
+  const mesTok = livre(t, dia.fim + 1)
+  if (!mesTok) return soDia()
+
+  const mesNome = numeroDoMes(mesTok.l)
+  if (mesNome !== null) {
+    let fim = dia.fim + 2
+    let ano: number | null = null
+    if (livre(t, fim) && DE_OU_DO.has(t[fim].l)) {
+      const y = lerAnoFalado(t, fim + 1)
+      if (y) {
+        ano = y.ano
+        fim = y.fim
+      }
+    }
+    return { iso: resolverDataFalada(dia.dia, mesNome, ano, hoje), fim }
+  }
+  const mesNum = lerMesNumerico(t, dia.fim + 1)
+  if (mesNum && livre(t, mesNum.fim) && DE_OU_DO.has(t[mesNum.fim].l)) {
+    const y = lerAnoFalado(t, mesNum.fim + 1)
+    if (y) return { iso: resolverDataFalada(dia.dia, mesNum.mes, y.ano, hoje), fim: y.fim }
+  }
+  return soDia()
+}
+
 function extrairData(t: Tok[], hoje: string): string | null {
   let data: string | null = null
   const marcar = (de: number, ate: number) => {
     for (let k = de; k < ate; k++) t[k].rem = true
-    // "no dia 20", "em dia 20": a preposição vai junto.
+    // "no dia 20", "em 29 de setembro", "de 29/09": a preposição vai junto.
     if (de > 0 && !t[de - 1].rem && PREPOSICOES_ANTES_DE_DATA.has(t[de - 1].l)) t[de - 1].rem = true
   }
   for (let i = 0; i < t.length; i++) {
@@ -59,28 +160,14 @@ function extrairData(t: Tok[], hoje: string): string | null {
       marcar(i, i + 1)
       continue
     }
-    if (l !== 'dia' || data !== null) continue
-    const dTok = t[i + 1]
-    if (!dTok || dTok.rem || !/^\d{1,2}[ºo°]?$/.test(dTok.l)) continue
-    const dia = parseInt(dTok.l, 10)
-    let fim = i + 2
-    let mes: number | null = null
-    let ano: number | null = null
-    if (t[fim]?.l === 'de' && t[fim + 1] && !t[fim + 1].rem) {
-      const m = numeroDoMes(t[fim + 1].l)
-      if (m !== null) {
-        mes = m
-        fim += 2
-        if (t[fim]?.l === 'de' && /^\d{4}$/.test(t[fim + 1]?.l ?? '')) {
-          ano = Number(t[fim + 1].l)
-          fim += 2
-        }
-      }
-    }
-    const iso = diaMesParaData(dia, mes, ano, hoje)
-    if (iso === null) continue
-    data = iso
-    marcar(i, fim)
+    if (data !== null) continue
+    // "dia 29 ..." e "data 29/09/2026": a palavra faz parte da data; sem ela a data também vale.
+    const prefixo = (l === 'dia' || l === 'data') && livre(t, i + 1) !== undefined
+    const r = lerDataFalada(t, prefixo ? i + 1 : i, hoje, l === 'dia')
+    // Inexistente (31/02, ano 1999): ignora e deixa as palavras na descrição.
+    if (!r || r.iso === null) continue
+    data = r.iso
+    marcar(i, r.fim)
   }
   return data
 }
